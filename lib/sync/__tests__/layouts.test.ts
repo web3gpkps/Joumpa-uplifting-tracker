@@ -68,7 +68,7 @@ describe("first sync on the imported workbook (same data on both sides)", () => 
     expect([...w.book.written].sort()).toEqual([PG, TM]);
     expect(w.book.get(TM, "A1")).toBe("Minggu Ke");
     expect(w.book.get(TM, "C1")).toBe("Temuan");
-    expect(w.book.locale).toBe("id_ID");
+    expect(w.book.locale).toBe("in_ID");
     expectSteady(w);
   });
 

@@ -131,7 +131,7 @@ export class FakeWorkbook {
   /** Same order and semantics as GoogleSheets.apply. Refuses to overwrite a formula cell. */
   apply(ops: RealOps, ids: Map<number, number | string>, skip: Set<string> = new Set()) {
     const keep = <T extends { table: string }>(xs: T[]) => xs.filter((x) => !skip.has(x.table));
-    this.locale = "id_ID";
+    this.locale = "in_ID";
     this.timeZone = "Asia/Jakarta";
     for (const c of keep(ops.createTabs)) {
       if (!c.exists) this.addTab(c.tab);

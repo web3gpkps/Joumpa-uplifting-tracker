@@ -22,7 +22,7 @@ interface FakeTab {
 
 export class FakeSheet {
   tabs = new Map<string, FakeTab>();
-  locale = "id_ID";
+  locale = "in_ID";
   private nextId = 100;
 
   addTab(title: string, values: unknown[][] = []) {

@@ -12,7 +12,7 @@
  */
 import { countOps, projectAll, tabsToRead, translate, type RealOps } from "./layouts";
 import { countPlan, finalizeBaseline, merge, type TableCounts } from "./merge";
-import { TARGET_LOCALE, TARGET_TZ, type SheetsPort } from "./sheets";
+import { needsSheetSetup, type SheetsPort } from "./sheets";
 import { conflictToLog, issueToLog, type SyncStore } from "./supabase";
 import { SYNC_TABLES } from "./tables";
 import { DEFAULT_CONFLICT_POLICY, type Baseline, type ConflictPolicy, type Plan, type SyncTable, type TableSpec } from "./types";
@@ -68,7 +68,7 @@ export async function runSync(deps: RunDeps, opts: RunOptions = {}): Promise<Run
     const { sheet, projections } = projectAll(real, specs);
     const plan = merge({ baseline, sheet, db, conflictPolicy: policy, allowMassDelete: opts.allowMassDelete, specs });
     const ops: RealOps = translate(plan, projections, real);
-    const setLocale = real.locale !== TARGET_LOCALE || real.timeZone !== TARGET_TZ;
+    const setLocale = needsSheetSetup(real.timeZone);
     return { plan, ops, previous: baseline, sheetSummary: { ...countOps(ops), setLocale } };
   };
 

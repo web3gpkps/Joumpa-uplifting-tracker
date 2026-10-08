@@ -18,8 +18,18 @@ import type { TableSpec } from "./types";
 
 const API = "https://sheets.googleapis.com/v4/spreadsheets";
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
-export const TARGET_LOCALE = "id_ID";
+// Google Sheets names Indonesian with the legacy code "in" (as it uses "iw" for Hebrew); "id_ID" is
+// rejected with "Unsupported locale".
+export const TARGET_LOCALE = "in_ID";
 export const TARGET_TZ = "Asia/Jakarta";
+
+/**
+ * The spreadsheet's locale and time zone are set once, on the first sync (while the time zone is not
+ * Jakarta yet). After that the engine leaves them alone, so a later manual change is not undone.
+ */
+export function needsSheetSetup(timeZone: string | undefined): boolean {
+  return timeZone !== TARGET_TZ;
+}
 
 export class SheetsError extends Error {
   constructor(
@@ -159,9 +169,8 @@ export class GoogleSheets implements SheetsPort {
     // 1. setup
     const setup: unknown[] = [];
     // TODAY() in the workbook must be the Jakarta date, and typed dates must parse as D/M/Y.
-    if (this.opts.setLocale !== false && (this.locale !== TARGET_LOCALE || this.timeZone !== TARGET_TZ)) {
-      setup.push({ updateSpreadsheetProperties: { properties: { locale: TARGET_LOCALE, timeZone: TARGET_TZ }, fields: "locale,timeZone" } });
-    }
+    const localeRequest = { updateSpreadsheetProperties: { properties: { locale: TARGET_LOCALE, timeZone: TARGET_TZ }, fields: "locale,timeZone" } };
+    if (this.opts.setLocale !== false && needsSheetSetup(this.timeZone)) setup.push(localeRequest);
     for (const t of keep(ops.createTabs)) {
       let sheetId = sheetIdOf.get(t.tab);
       if (!t.exists || sheetId === undefined) {
@@ -214,7 +223,17 @@ export class GoogleSheets implements SheetsPort {
         setup.push({ updateSheetProperties: { properties: { sheetId: m.sheetId, gridProperties: { rowCount: g.rowCount } }, fields: "gridProperties.rowCount" } });
       }
     }
-    if (setup.length) await this.call("POST", ":batchUpdate", { requests: setup });
+    if (setup.length) {
+      try {
+        await this.call("POST", ":batchUpdate", { requests: setup });
+      } catch (e) {
+        // A locale Google refuses must not block the sync: set the time zone alone and carry on.
+        if (!(e instanceof SheetsError) || e.status !== 400 || !/locale/i.test(e.message) || setup[0] !== localeRequest) throw e;
+        console.warn(`Sheets refused locale ${TARGET_LOCALE}; setting the time zone only.`);
+        setup[0] = { updateSpreadsheetProperties: { properties: { timeZone: TARGET_TZ }, fields: "timeZone" } };
+        await this.call("POST", ":batchUpdate", { requests: setup });
+      }
+    }
 
     // 2. values
     const data: { range: string; values: unknown[][] }[] = [];

@@ -51,7 +51,7 @@ describe("helpers", () => {
   });
 });
 
-const META = (sheets: { title: string; sheetId: number }[], locale = "id_ID", timeZone = "Asia/Jakarta") => (c: Call) =>
+const META = (sheets: { title: string; sheetId: number }[], locale = "in_ID", timeZone = "Asia/Jakarta") => (c: Call) =>
   c.url.includes("?fields=")
     ? { json: { properties: { locale, timeZone }, sheets: sheets.map((s) => ({ properties: { ...s, gridProperties: { rowCount: 1000, columnCount: 26 } } })) } }
     : undefined;
@@ -91,9 +91,9 @@ describe("GoogleSheets.read", () => {
   });
 });
 
-async function applyWith(ops: RealOps, ids = new Map<number, number>(), locale = "id_ID") {
+async function applyWith(ops: RealOps, ids = new Map<number, number>(), locale = "in_ID", timeZone = "Asia/Jakarta") {
   const sheets = ["Parameter", "Master SDM", "Cek BMI 2 Mingguan", "Log Performa Mingguan", "Tindak Lanjut", "Penggantian SDM"].map((title, i) => ({ title, sheetId: i + 1 }));
-  const m = mockFetch([META(sheets, locale), (c) => (c.url.includes("values:batchGet") ? { json: { valueRanges: sheets.map(() => ({ values: [] })) } } : undefined)]);
+  const m = mockFetch([META(sheets, locale, timeZone), (c) => (c.url.includes("values:batchGet") ? { json: { valueRanges: sheets.map(() => ({ values: [] })) } } : undefined)]);
   const gs = new GoogleSheets("id", token, { fetch: m.fetch });
   await gs.read(sheets.map((s) => s.title));
   m.calls.length = 0;
@@ -102,13 +102,48 @@ async function applyWith(ops: RealOps, ids = new Map<number, number>(), locale =
 }
 
 describe("GoogleSheets.apply", () => {
-  test("first sync of the workbook: locale, Temuan tab, ID columns (format copied, P hidden), then RAW values", async () => {
+  test("a refused locale does not block the sync: time zone alone, then the rest of the setup", async () => {
+    const w = new WorkbookWorld(smallDb());
+    const { ops } = w.prepare();
+    const sheets = ["Parameter", "Master SDM", "Cek BMI 2 Mingguan", "Log Performa Mingguan", "Tindak Lanjut", "Penggantian SDM"].map((title, i) => ({ title, sheetId: i + 1 }));
+    let refused = 0;
+    const m = mockFetch([
+      META(sheets, "en_US", "America/Los_Angeles"),
+      (c) => (c.url.includes("values:batchGet") ? { json: { valueRanges: sheets.map(() => ({ values: [] })) } } : undefined),
+      (c) => {
+        const first = (c.body?.requests as Req[] | undefined)?.[0]?.updateSpreadsheetProperties;
+        if (first?.properties?.locale && refused++ === 0) {
+          return { status: 400, json: { error: { status: "INVALID_ARGUMENT", message: "Invalid requests[0].updateSpreadsheetProperties: Unsupported locale: in_ID" } } };
+        }
+        return undefined;
+      },
+    ]);
+    const gs = new GoogleSheets("id", token, { fetch: m.fetch, retryDelayMs: 1 });
+    await gs.read(sheets.map((s) => s.title));
+    m.calls.length = 0;
+    await gs.apply(ops, new Map([[1, 1]]));
+    const setups = m.calls.filter((c) => (c.body?.requests as Req[] | undefined)?.[0]?.updateSpreadsheetProperties);
+    expect(setups).toHaveLength(2);
+    expect((setups[1].body!.requests as Req[])[0].updateSpreadsheetProperties).toEqual({ properties: { timeZone: "Asia/Jakarta" }, fields: "timeZone" });
+    expect((setups[1].body!.requests as Req[]).some((r) => r.addSheet?.properties?.title === "Temuan Mingguan")).toBe(true);
+    expect(m.calls.some((c) => c.url.endsWith("values:batchUpdate"))).toBe(true);
+  });
+
+  test("locale and time zone are set once: a Jakarta sheet is left alone whatever its locale", async () => {
     const w = new WorkbookWorld(smallDb());
     const { ops } = w.prepare();
     const calls = await applyWith(ops, new Map([[1, 1]]), "en_US");
+    const setup = (calls.find((c) => c.url.endsWith(":batchUpdate"))?.body?.requests ?? []) as Req[];
+    expect(setup.some((r) => r.updateSpreadsheetProperties)).toBe(false);
+  });
+
+  test("first sync of the workbook: locale, Temuan tab, ID columns (format copied, P hidden), then RAW values", async () => {
+    const w = new WorkbookWorld(smallDb());
+    const { ops } = w.prepare();
+    const calls = await applyWith(ops, new Map([[1, 1]]), "en_US", "America/Los_Angeles");
     const setup = calls[0].body!.requests as Req[];
     expect(calls[0].url).toEndWith(":batchUpdate");
-    expect(setup[0].updateSpreadsheetProperties.properties).toEqual({ locale: "id_ID", timeZone: "Asia/Jakarta" });
+    expect(setup[0].updateSpreadsheetProperties.properties).toEqual({ locale: "in_ID", timeZone: "Asia/Jakarta" });
     expect(setup.filter((r) => r.addSheet).map((r) => r.addSheet.properties.title)).toEqual(["Temuan Mingguan"]);
     expect(setup.some((r) => r.addProtectedRange?.protectedRange?.warningOnly === true)).toBe(true);
     expect(setup.some((r) => r.copyPaste?.pasteType === "PASTE_FORMAT" && r.copyPaste.destination.startColumnIndex === 15)).toBe(true);
