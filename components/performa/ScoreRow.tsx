@@ -1,17 +1,16 @@
 "use client";
 
-import { useId, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { deltaVsBaseline, practiceAvg, weeklyStatus, type Settings } from "@/lib/rules";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClasses } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { Input, NumberInput } from "@/components/ui/Field";
+import { Field, Input, Textarea } from "@/components/ui/Field";
 import { SaveStatus, type SaveState } from "@/components/ui/SaveStatus";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { cx } from "@/components/ui/cx";
 import type { WeeklyScoreInput, WeeklyScoreResult } from "@/components/performa/actions";
 import { formatScore, formatSignedScore } from "@/lib/format";
 import { ASPECTS, parseScore } from "./format";
-import { CELL, ROW_GRID, STICKY_FIRST } from "./entry-layout";
 
 export type SavedScore = {
   scores: Array<number | null>;
@@ -23,7 +22,7 @@ export type EntryStaff = {
   code: string;
   name: string;
   assignmentStatus: string;
-  /** Training baseline average (Master SDM P), for Δ vs baseline. */
+  /** Training baseline average, for the difference line. */
   baselineAvg: number | null;
   /** This week's saved row, or null. */
   saved: SavedScore | null;
@@ -34,6 +33,11 @@ export type EntryStaff = {
 export type SaveScoreAction = (accessKey: string, input: WeeklyScoreInput) => Promise<WeeklyScoreResult>;
 
 type Draft = { scores: string[]; observer: string; notes: string };
+
+const VALUES = ["1", "2", "3", "4", "5"] as const;
+
+/** Fields inside "Lainnya": a server error on one of them opens it. */
+const MORE_FIELDS = new Set(["observer", "coaching_notes"]);
 
 function draftFrom(saved: SavedScore | null): Draft {
   return {
@@ -58,18 +62,9 @@ function isEmpty(d: Draft): boolean {
   return n.observer === "" && n.notes === "" && n.scores.every((s) => s === "");
 }
 
-const FIELD_INDEX: Record<string, number> = {
-  score_a: 0,
-  score_b: 1,
-  score_c: 2,
-  score_d: 3,
-  score_e: 4,
-  score_f: 5,
-};
-
-function joinLetters(letters: string[]): string {
-  if (letters.length <= 1) return letters.join("");
-  return `${letters.slice(0, -1).join(", ")} dan ${letters[letters.length - 1]}`;
+/** True when the saved row has an average (the person counts as "dinilai"). */
+export function isScored(saved: SavedScore | null): boolean {
+  return saved !== null && practiceAvg(saved.scores) !== null;
 }
 
 type ScoreRowProps = {
@@ -77,118 +72,98 @@ type ScoreRowProps = {
   week: number;
   settings: Settings;
   staff: EntryStaff;
-  /** Observer name filled into an empty Pengamat field when scoring starts. */
+  /** Observer name filled into an empty Observer field when scoring starts. */
   defaultObserver: string;
   saveAction: SaveScoreAction;
+  /** After a successful save: move to the next card without a score. */
+  onSaved: (code: string) => void;
 };
 
 /**
- * One staff member's scores for one week: A to F (1 to 5), live average, weekly status
- * and Δ vs baseline (lib/rules), observer, coaching notes, and a per-row save.
- * Enter in any field saves the row. Clearing every field of a saved row deletes it
- * after a confirmation. Typed input survives a failed save.
+ * One person's card on phones: A to F as 1 to 5 buttons (tap the chosen one again to clear
+ * it), live Rata-rata and Status, "Simpan & berikutnya". Observer and Catatan coaching sit
+ * behind "Lainnya". Clearing every field of a saved card deletes it after a confirmation.
+ * Typed input survives a failed save.
  */
-export function ScoreRow({ accessKey, week, settings, staff, defaultObserver, saveAction }: ScoreRowProps) {
+export function ScoreRow({ accessKey, week, settings, staff, defaultObserver, saveAction, onSaved }: ScoreRowProps) {
   const id = useId();
   const nameId = `${id}-name`;
   const messageId = `${id}-message`;
-  const scoreRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const observerRef = useRef<HTMLInputElement | null>(null);
 
   const [draft, setDraft] = useState<Draft>(() => draftFrom(staff.saved));
   const [prevSaved, setPrevSaved] = useState<SavedScore | null>(staff.saved);
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
   const [serverField, setServerField] = useState<{ field: string; message: string } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
-  // New server data after refresh(): adopt it unless the person is still editing this row.
+  // New server data after refresh(): adopt it unless the person is still editing this card.
   if (prevSaved !== staff.saved) {
     setPrevSaved(staff.saved);
     if (sameDraft(draft, draftFrom(prevSaved))) setDraft(draftFrom(staff.saved));
   }
 
-  const savedDraft = draftFrom(staff.saved);
-  const dirty = !sameDraft(draft, savedDraft);
+  const dirty = !sameDraft(draft, draftFrom(staff.saved));
   const saving = saveState.status === "saving";
   const willDelete = dirty && staff.saved !== null && isEmpty(draft);
 
   const parsed = draft.scores.map(parseScore);
-  const invalidLetters = parsed.flatMap((p, i) => (p === "invalid" ? [ASPECTS[i].letter] : []));
   const valid = parsed.map((p) => (p === "invalid" ? null : p));
   const avg = practiceAvg(valid);
   const status = weeklyStatus(avg, settings);
   const delta = deltaVsBaseline(avg, staff.baselineAvg);
-  const serverIndex = serverField ? FIELD_INDEX[serverField.field] : undefined;
-
-  let message: string | null = null;
-  if (invalidLetters.length > 0) {
-    message = `Nilai ${joinLetters(invalidLetters)} harus angka bulat 1 sampai 5.`;
-  } else if (serverField) {
-    message = serverField.message;
-  }
+  const message = serverField?.message ?? null;
 
   function edit(next: Draft) {
     setDraft(next);
-    if (saveState.status === "saved" || saveState.status === "error") setSaveState({ status: "idle" });
+    if (saveState.status === "saved" || saveState.status === "error" || saveState.status === "deleted") {
+      setSaveState({ status: "idle" });
+    }
     if (serverField) setServerField(null);
   }
 
-  function onScoreChange(index: number, event: ChangeEvent<HTMLInputElement>) {
-    const native = event.nativeEvent as InputEvent;
-    // A score is one key: typing into a filled field replaces it (wherever the caret is).
-    const typed = native.inputType === "insertText" && native.data ? native.data : null;
-    const value = typed !== null && draft.scores[index].trim() !== "" ? typed : event.target.value;
-    const scores = draft.scores.map((s, i) => (i === index ? value : s));
-    const startedScoring = draft.scores.every((s) => s.trim() === "") && value.trim() !== "";
-    const observer =
-      startedScoring && draft.observer.trim() === "" && defaultObserver.trim() !== ""
-        ? defaultObserver.trim()
-        : draft.observer;
-    edit({ ...draft, scores, observer });
-
-    // Typing one valid digit moves on to the next aspect (announced in the help text above the list).
-    if (typed !== null && /^[1-5]$/.test(value.trim())) {
-      const next = index < ASPECTS.length - 1 ? scoreRefs.current[index + 1] : observerRef.current;
-      next?.focus();
-    }
+  function setScore(index: number, value: string) {
+    const startedScoring = draft.scores.every((s) => s.trim() === "") && value !== "";
+    edit({
+      ...draft,
+      scores: draft.scores.map((s, i) => (i === index ? value : s)),
+      observer:
+        startedScoring && draft.observer.trim() === "" && defaultObserver.trim() !== ""
+          ? defaultObserver.trim()
+          : draft.observer,
+    });
   }
 
   async function persist(toSave: Draft) {
-    const values = toSave.scores.map(parseScore).map((p) => (p === "invalid" ? null : p));
+    const n = normalise(toSave);
     setSaveState({ status: "saving" });
     try {
       const result = await saveAction(accessKey, {
         staffCode: staff.code,
         week,
-        scores: values,
-        observer: toSave.observer,
-        coachingNotes: toSave.notes,
+        scores: n.scores.map(parseScore).map((p) => (p === "invalid" ? null : p)),
+        observer: n.observer,
+        coachingNotes: n.notes,
       });
       if (!result.ok) {
         setSaveState({ status: "error", message: result.error.message });
-        if (result.error.field) setServerField({ field: result.error.field, message: result.error.message });
+        if (result.error.field) {
+          setServerField({ field: result.error.field, message: result.error.message });
+          if (MORE_FIELDS.has(result.error.field)) setMoreOpen(true);
+        }
         return;
       }
-      // Show the trimmed values the database stored, unless the row was edited meanwhile.
-      setDraft((current) => (current === toSave ? normalise(toSave) : current));
+      setDraft((current) => (current === toSave ? n : current));
       setSaveState({ status: result.deleted ? "deleted" : "saved", at: result.savedAt });
+      if (!result.deleted) onSaved(staff.code);
     } catch {
-      setSaveState({
-        status: "error",
-        message: "koneksi ke server terputus. Nilai yang Anda ketik masih ada; simpan lagi.",
-      });
+      setSaveState({ status: "error", message: "koneksi terputus. Isian masih ada; simpan lagi." });
     }
   }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!dirty || saving) return;
-    if (invalidLetters.length > 0) {
-      const first = scoreRefs.current[parsed.findIndex((p) => p === "invalid")];
-      first?.focus();
-      first?.select();
-      return;
-    }
     if (willDelete) {
       setConfirmOpen(true);
       return;
@@ -196,127 +171,148 @@ export function ScoreRow({ accessKey, week, settings, staff, defaultObserver, sa
     void persist(draft);
   }
 
-  function confirmDelete() {
-    setConfirmOpen(false);
-    void persist(draft);
-  }
-
   const notActive = staff.assignmentStatus && staff.assignmentStatus !== "Aktif";
+  const fieldInvalid = (field: string) => serverField?.field === field || undefined;
 
   return (
-    <li className="group border-b border-line px-4 py-4 focus-within:bg-brand-tint grid:px-0 grid:py-1.5">
-      <form onSubmit={onSubmit} noValidate>
-        <div role="group" aria-labelledby={nameId} className={ROW_GRID}>
-          <div
-            className={cx(
-              CELL.name,
-              STICKY_FIRST,
-              "flex flex-col justify-center gap-0.5 bg-transparent grid:bg-surface grid:group-focus-within:bg-brand-tint",
-            )}
-          >
-            <p id={nameId} className="text-sm font-semibold text-ink">
+    <li
+      data-entry-card=""
+      data-code={staff.code}
+      data-scored={isScored(staff.saved) ? "true" : "false"}
+      className="scroll-mt-20 border-b border-line px-4 py-4 last:border-b-0"
+    >
+      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4" aria-labelledby={nameId}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p id={nameId} className="text-base font-semibold text-ink">
               {staff.name}
             </p>
-            <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
+            <p className="flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
               <span className="tabular-nums">{staff.code}</span>
               {notActive ? <StatusChip label={staff.assignmentStatus} /> : null}
             </p>
-            {staff.changedLabel ? <p className="text-xs text-ink-muted">{staff.changedLabel}</p> : null}
           </div>
+          <p className="flex shrink-0 flex-col items-end text-right" aria-live="polite">
+            <span className="text-base font-semibold text-ink tabular-nums">
+              <span className="sr-only">Rata-rata </span>
+              {avg !== null ? formatScore(avg) : "–"}
+            </span>
+            <StatusChip label={status} emptyLabel="Belum dinilai" />
+          </p>
+        </div>
 
-          {ASPECTS.map((aspect, i) => {
-            const inputId = `${id}-${aspect.letter}`;
-            const bad = parsed[i] === "invalid" || serverIndex === i;
-            return (
-              <div key={aspect.key} className={cx(CELL.score, "flex flex-col justify-end gap-1")}>
-                <label htmlFor={inputId} className="text-xs font-semibold text-ink grid:sr-only">
-                  {`${aspect.letter} ${aspect.name}`}
-                </label>
-                <NumberInput
-                  id={inputId}
-                  ref={(node) => {
-                    scoreRefs.current[i] = node;
-                  }}
-                  value={draft.scores[i]}
-                  onChange={(event) => onScoreChange(i, event)}
-                  onFocus={(event) => event.currentTarget.select()}
-                  alignEnd={false}
-                  className="text-center"
-                  aria-invalid={bad || undefined}
-                  aria-describedby={bad && message ? messageId : undefined}
-                />
+        <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+          {ASPECTS.map((aspect, i) => (
+            <fieldset key={aspect.key} className="min-w-0">
+              <legend className="mb-1 text-sm font-semibold text-ink">
+                {aspect.letter} {aspect.name}
+              </legend>
+              <div className="flex gap-1">
+                {VALUES.map((value, v) => {
+                  const checked = draft.scores[i] === value;
+                  return (
+                    <label key={value} className="relative min-w-0 flex-1">
+                      <input
+                        type="radio"
+                        name={`${id}-${aspect.key}`}
+                        value={value}
+                        checked={checked}
+                        data-score-input={i === 0 && v === 0 ? "" : undefined}
+                        onChange={() => setScore(i, value)}
+                        // Tapping the chosen value again clears the aspect (radios cannot do that natively).
+                        onClick={() => {
+                          if (checked) setScore(i, "");
+                        }}
+                        aria-describedby={fieldInvalid(aspect.field) && message ? messageId : undefined}
+                        className="peer absolute inset-0 size-full cursor-pointer opacity-0"
+                      />
+                      <span
+                        aria-hidden="true"
+                        className={cx(
+                          "flex min-h-11 items-center justify-center rounded-control border text-base font-semibold tabular-nums",
+                          "transition-colors duration-120 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand",
+                          checked
+                            ? "border-brand bg-brand text-white"
+                            : "border-line-strong bg-surface text-ink peer-hover:bg-bg",
+                        )}
+                      >
+                        {value}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
-            );
-          })}
+            </fieldset>
+          ))}
+        </div>
 
-          <div className={cx(CELL.result, "flex flex-wrap items-center gap-x-3 gap-y-1 grid:flex-col grid:items-start grid:gap-1")}>
-            {avg !== null ? (
-              <p className="text-sm tabular-nums">
-                <span className="text-ink-muted grid:sr-only">Rata-rata </span>
-                <span className="font-semibold text-ink">{formatScore(avg)}</span>
-                {delta !== null ? (
-                  <span className="ml-2 text-xs text-ink-muted">
-                    <span aria-hidden="true">Δ </span>
-                    <span className="sr-only">selisih dengan baseline </span>
-                    {formatSignedScore(delta)}
-                  </span>
-                ) : null}
+        <details open={moreOpen} onToggle={(e) => setMoreOpen(e.currentTarget.open)}>
+          <summary
+            className={cx(
+              buttonClasses({ variant: "ghost", size: "sm" }),
+              "-ml-3 w-fit cursor-pointer list-none [&::-webkit-details-marker]:hidden",
+            )}
+          >
+            {moreOpen ? "Tutup lainnya" : "Lainnya"}
+          </summary>
+          <div className="mt-3 flex flex-col gap-3">
+            <Field label="Observer">
+              <Input
+                value={draft.observer}
+                onChange={(e) => edit({ ...draft, observer: e.target.value })}
+                maxLength={200}
+                autoComplete="off"
+                aria-invalid={fieldInvalid("observer")}
+              />
+            </Field>
+            <Field label="Catatan coaching">
+              <Textarea
+                value={draft.notes}
+                onChange={(e) => edit({ ...draft, notes: e.target.value })}
+                maxLength={4000}
+                rows={2}
+                aria-invalid={fieldInvalid("coaching_notes")}
+              />
+            </Field>
+            {delta !== null || staff.changedLabel ? (
+              <p className="text-xs text-ink-muted tabular-nums">
+                {delta !== null ? `Δ baseline ${formatSignedScore(delta)}` : null}
+                {delta !== null && staff.changedLabel ? " · " : null}
+                {staff.changedLabel}
               </p>
             ) : null}
-            <StatusChip label={status} emptyLabel="Belum dinilai" />
-          </div>
-
-          <div className={cx(CELL.observer, "flex flex-col gap-1")}>
-            <label htmlFor={`${id}-observer`} className="text-xs font-semibold text-ink grid:sr-only">
-              Pengamat
-            </label>
-            <Input
-              id={`${id}-observer`}
-              ref={observerRef}
-              value={draft.observer}
-              onChange={(event) => edit({ ...draft, observer: event.target.value })}
-              maxLength={200}
-              autoComplete="off"
-              aria-invalid={serverField?.field === "observer" || undefined}
-            />
-          </div>
-
-          <div className={cx(CELL.notes, "flex flex-col gap-1")}>
-            <label htmlFor={`${id}-notes`} className="text-xs font-semibold text-ink grid:sr-only">
-              Catatan coaching
-            </label>
-            <Input
-              id={`${id}-notes`}
-              value={draft.notes}
-              onChange={(event) => edit({ ...draft, notes: event.target.value })}
-              maxLength={4000}
-              autoComplete="off"
-              aria-invalid={serverField?.field === "coaching_notes" || undefined}
-            />
-          </div>
-
-          <div className={cx(CELL.save, "flex flex-wrap items-center gap-x-3 gap-y-1 grid:flex-col grid:items-start grid:gap-0.5 grid:pr-3")}>
-            <Button
-              type="submit"
-              size="sm"
-              variant={willDelete ? "danger" : "primary"}
-              disabled={!dirty}
-              loading={saving}
-              loadingText="Menyimpan…"
-            >
-              {willDelete ? "Hapus nilai" : "Simpan nilai"}
-            </Button>
-            {dirty && !saving && saveState.status !== "error" ? (
-              <span className="text-xs font-semibold text-warning">Belum disimpan</span>
+            {!isEmpty(draft) ? (
+              <button
+                type="button"
+                onClick={() => edit({ scores: ASPECTS.map(() => ""), observer: "", notes: "" })}
+                className="-ml-3 inline-flex min-h-11 w-fit items-center rounded-control px-3 text-sm font-semibold text-critical transition-colors duration-120 hover:bg-critical-tint lg:min-h-8"
+              >
+                Kosongkan isian
+              </button>
             ) : null}
-            <SaveStatus state={saveState} className="grid:min-h-0" />
           </div>
+        </details>
 
-          {message ? (
-            <p id={messageId} className={cx(CELL.message, "text-sm font-semibold text-critical grid:pt-1 grid:pb-1")}>
-              <span className="grid:sticky grid:left-3 grid:inline-block">{message}</span>
-            </p>
+        {message ? (
+          <p id={messageId} className="text-sm font-semibold text-critical">
+            {message}
+          </p>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Button
+            type="submit"
+            variant={willDelete ? "danger" : "primary"}
+            disabled={!dirty}
+            loading={saving}
+            loadingText="Menyimpan…"
+          >
+            {willDelete ? "Hapus nilai" : "Simpan & berikutnya"}
+          </Button>
+          {dirty && !saving && saveState.status !== "error" ? (
+            <span className="text-xs font-semibold text-warning">Belum disimpan</span>
           ) : null}
+          <SaveStatus state={saveState} />
         </div>
       </form>
 
@@ -324,13 +320,19 @@ export function ScoreRow({ accessKey, week, settings, staff, defaultObserver, sa
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         title={`Hapus nilai Minggu ke-${week} untuk ${staff.name}?`}
-        description="Nilai A sampai F, pengamat, dan catatan coaching minggu ini dikosongkan. Nilai minggu lain tidak berubah."
+        description="Nilai minggu lain tidak berubah."
         footer={
           <>
             <Button variant="secondary" onClick={() => setConfirmOpen(false)}>
               Batal
             </Button>
-            <Button variant="danger" onClick={confirmDelete}>
+            <Button
+              variant="danger"
+              onClick={() => {
+                setConfirmOpen(false);
+                void persist(draft);
+              }}
+            >
               Hapus nilai
             </Button>
           </>

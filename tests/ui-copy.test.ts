@@ -32,7 +32,6 @@ const FORBIDDEN: Array<[RegExp, string]> = [
  * entry whose file is already clean, so this list can only shrink.
  */
 const PENDING_SCREENS = new Set<string>([
-  "components/ringkasan/RingkasanView.tsx",
 ]);
 
 /**

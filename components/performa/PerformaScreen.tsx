@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { practiceAvg, staffRekap, weekEnd, weekOfDate, weekStart } from "@/lib/rules";
-import { formatTanggal, formatTanggalPendek, formatHariTanggal } from "@/lib/dates";
+import { formatTanggal, formatTanggalPendek } from "@/lib/dates";
 import {
   hrefs,
   lastChangedLabel,
@@ -11,18 +12,18 @@ import {
   type WorkspaceAccess,
   type Workspace,
   type WorkspaceStaff,
-  sheetLabel,
 } from "@/lib/workspace";
 import { todayInJakarta } from "@/components/shell/programme-calendar";
+import { ButtonLink } from "@/components/ui/Button";
 import { PageHeader, PageLoading } from "@/components/ui/PageHeader";
 import { Panel } from "@/components/ui/Panel";
-import { StationSelect } from "@/components/ui/StationSelect";
-import { WeekSelect } from "@/components/ui/WeekSelect";
-import { ALL_STATIONS, weekOptions, type UrlOption } from "@/components/ui/url-options";
 import { RememberView } from "@/components/ui/RememberView";
 import { oneTo, rememberScope } from "@/components/ui/remember";
-import { TabNav } from "@/components/ui/TabNav";
 import { EmptyState } from "@/components/ui/States";
+import { StationSelect } from "@/components/ui/StationSelect";
+import { FilterBar } from "@/components/ui/Toolbar";
+import { WeekSelect } from "@/components/ui/WeekSelect";
+import { ALL_STATIONS, weekOptions, type UrlOption } from "@/components/ui/url-options";
 import { WeeklyEntry, type EntryGroup } from "@/components/performa/WeeklyEntry";
 import type { EntryStaff } from "@/components/performa/ScoreRow";
 import { RekapTable } from "@/components/performa/RekapTable";
@@ -30,10 +31,10 @@ import { ScoreGrid, type ScoreGridRow } from "@/components/performa/ScoreGrid";
 import { parseWeek } from "@/components/performa/workspace-data";
 import { saveWeeklyScore } from "./actions";
 
-const TITLE = sheetLabel("performa");
+const TITLE = "Penilaian Mingguan";
 
 export function PerformaLoading() {
-  return <PageLoading title={TITLE} label="Memuat nilai performa" />;
+  return <PageLoading title={TITLE} label="Memuat penilaian" />;
 }
 
 type Query = { tab: "input" | "rekap"; week: number; station: string | null };
@@ -51,7 +52,10 @@ function isAssessed(ws: Workspace, code: string, week: number): boolean {
   return row ? practiceAvg(row) !== null : false;
 }
 
-/** Workbook sheets "Log Performa Mingguan" (input) and "Rekap Performa" (rekap). */
+/**
+ * Penilaian Mingguan: week select + score grid (phones: one card per person). Rekap is a
+ * secondary view (?tab=rekap) behind one button in the header.
+ */
 export function PerformaScreen({ access, ws, searchParams: sp }: ScreenProps) {
   const today = todayInJakarta();
   const settings = ruleSettings(ws.settings);
@@ -64,47 +68,44 @@ export function PerformaScreen({ access, ws, searchParams: sp }: ScreenProps) {
   const currentWeek = weekOfDate(today, settings);
   const allStaff = sortedStaff(ws);
   const staff = query.station ? allStaff.filter((s) => s.station === query.station) : allStaff;
-  const scopeName = query.station ? `Stasiun ${query.station}` : ws.isKps ? "semua stasiun" : ws.scopeLabel;
+  const scopeName = query.station ?? (ws.isKps ? "semua stasiun" : ws.scopeLabel);
+  const showStation = ws.isKps && query.station === null;
+  const rekap = query.tab === "rekap";
 
-  const assessedCount = (list: WorkspaceStaff[]) =>
-    list.filter((s) => isAssessed(ws, s.code, query.week)).length;
+  const assessedCount = (list: WorkspaceStaff[]) => list.filter((s) => isAssessed(ws, s.code, query.week)).length;
 
-  const stationOptions: UrlOption[] = ws.isKps
-    ? [null, ...stationCodes(ws)].map((code) => {
-        const list = code ? allStaff.filter((s) => s.station === code) : allStaff;
-        const done = assessedCount(list);
-        const name = code ?? "Semua stasiun";
-        return {
-          value: code ?? ALL_STATIONS,
-          label: query.tab === "input" ? `${name} · ${done} dari ${list.length} dinilai` : `${name} · ${list.length} SDM`,
-          href: hrefFor(access, { ...query, station: code }),
-        };
-      })
-    : [];
+  const stationFilter = ws.isKps ? (
+    <StationSelect
+      options={[null, ...stationCodes(ws)].map(
+        (code): UrlOption => {
+          const list = code ? allStaff.filter((s) => s.station === code) : allStaff;
+          const count = rekap ? `${list.length} SDM` : `${assessedCount(list)}/${list.length}`;
+          return {
+            value: code ?? ALL_STATIONS,
+            label: `${code ?? "Semua stasiun"} (${count})`,
+            href: hrefFor(access, { ...query, station: code }),
+          };
+        },
+      )}
+      current={query.station ?? ALL_STATIONS}
+    />
+  ) : null;
 
-  const tabs = [
-    { href: hrefFor(access, { ...query, tab: "input" }), label: "Input mingguan" },
-    { href: hrefFor(access, { ...query, tab: "rekap" }), label: "Rekap" },
-  ];
-
-  const weekRange = `${formatTanggalPendek(weekStart(query.week, settings))} s.d. ${formatTanggal(
-    weekEnd(query.week, settings),
-  )}`;
+  const weekStartDate = weekStart(query.week, settings);
+  const weekRange = `${formatTanggalPendek(weekStartDate)} s.d. ${formatTanggal(weekEnd(query.week, settings))}`;
+  const notStarted = today < weekStartDate ? " · belum berjalan" : "";
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title={TITLE}
-        meta={`${ws.scopeLabel} · ${query.tab === "input" ? `Minggu ke-${query.week}, ${weekRange}` : `Rekap ${settings.weeks} minggu`}`}
+        meta={rekap ? `${ws.scopeLabel} · Rekap ${settings.weeks} minggu` : `${ws.scopeLabel} · ${weekRange}${notStarted}`}
+        actions={
+          <ButtonLink href={hrefFor(access, { ...query, tab: rekap ? "input" : "rekap" })} scroll={false}>
+            {rekap ? "Isi penilaian" : "Lihat rekap"}
+          </ButtonLink>
+        }
       >
-        <TabNav
-          label="Tampilan performa"
-          items={tabs}
-          currentHref={query.tab === "rekap" ? tabs[1].href : tabs[0].href}
-        />
-        {query.tab === "rekap" && stationOptions.length > 0 ? (
-          <StationSelect options={stationOptions} current={query.station ?? ALL_STATIONS} />
-        ) : null}
         <RememberView
           scope={rememberScope(access, ws)}
           allowed={{ minggu: oneTo(settings.weeks), ...(ws.isKps ? { stasiun: stationCodes(ws) } : {}) }}
@@ -112,20 +113,36 @@ export function PerformaScreen({ access, ws, searchParams: sp }: ScreenProps) {
         />
       </PageHeader>
 
-      {query.tab === "input" ? (
+      {rekap ? (
+        <RekapView
+          ws={ws}
+          staff={staff}
+          scopeName={scopeName}
+          showStation={showStation}
+          currentWeek={currentWeek}
+          filters={stationFilter}
+        />
+      ) : (
         <InputView
           ws={ws}
           access={access}
           query={query}
           staff={staff}
           scopeName={scopeName}
-          today={today}
-          currentWeek={currentWeek}
+          showStation={showStation}
           assessed={assessedCount(staff)}
-          stationOptions={stationOptions}
+          filters={
+            <>
+              <WeekSelect
+                label="Minggu"
+                options={weekOptions(settings, (w) => hrefFor(access, { ...query, week: w }))}
+                current={String(query.week)}
+                nowValue={currentWeek !== null ? String(currentWeek) : undefined}
+              />
+              {stationFilter}
+            </>
+          }
         />
-      ) : (
-        <RekapView ws={ws} staff={staff} scopeName={scopeName} currentWeek={currentWeek} />
       )}
     </div>
   );
@@ -137,26 +154,21 @@ function InputView({
   query,
   staff,
   scopeName,
-  today,
-  currentWeek,
+  showStation,
   assessed,
-  stationOptions,
+  filters,
 }: {
   ws: Workspace;
   access: WorkspaceAccess;
   query: Query;
   staff: WorkspaceStaff[];
   scopeName: string;
-  today: string;
-  currentWeek: number | null;
+  showStation: boolean;
   assessed: number;
-  stationOptions: UrlOption[];
+  filters: ReactNode;
 }) {
   const settings = ruleSettings(ws.settings);
-  const start = weekStart(query.week, settings);
-  const isFuture = today < start;
   const total = staff.length;
-  const percent = total === 0 ? 0 : Math.round((assessed / total) * 100);
 
   const groups: EntryGroup[] = [];
   const gridRows: ScoreGridRow[] = [];
@@ -167,11 +179,13 @@ function InputView({
       groups.push(group);
     }
     const row = ws.weeklyScores.find((r) => r.staffCode === s.code && r.week === query.week) ?? null;
-    const entry: EntryStaff = {
+    const changedLabel = row ? lastChangedLabel(row, ws) : null;
+    const baselineAvg = practiceAvg(s);
+    group.staff.push({
       code: s.code,
       name: s.name,
       assignmentStatus: s.assignmentStatus,
-      baselineAvg: practiceAvg(s),
+      baselineAvg,
       saved: row
         ? {
             scores: [row.scoreA, row.scoreB, row.scoreC, row.scoreD, row.scoreE, row.scoreF],
@@ -179,14 +193,14 @@ function InputView({
             coachingNotes: row.coachingNotes,
           }
         : null,
-      changedLabel: row ? lastChangedLabel(row, ws) : null,
-    };
-    group.staff.push(entry);
+      changedLabel,
+    } satisfies EntryStaff);
     gridRows.push({
       code: s.code,
       name: s.name,
+      station: s.station,
       assignmentStatus: s.assignmentStatus,
-      baselineAvg: entry.baselineAvg,
+      baselineAvg,
       score_a: row?.scoreA ?? null,
       score_b: row?.scoreB ?? null,
       score_c: row?.scoreC ?? null,
@@ -195,97 +209,73 @@ function InputView({
       score_f: row?.scoreF ?? null,
       observer: row?.observer ?? null,
       coaching_notes: row?.coachingNotes ?? null,
-      changedLabel: entry.changedLabel,
+      changedLabel,
     });
   }
   for (const g of groups) {
     const done = g.staff.filter((e) => isAssessed(ws, e.code, query.week)).length;
-    g.summary = `${g.staff.length} SDM, ${done} sudah dinilai`;
+    g.summary = `${done} dari ${g.staff.length} dinilai`;
   }
 
-  const weekSelect = (
-    <WeekSelect
-      label="Minggu"
-      options={weekOptions(settings, (w) => hrefFor(access, { ...query, week: w }))}
-      current={String(query.week)}
-      nowValue={currentWeek ? String(currentWeek) : undefined}
-    />
+  const label = `Penilaian Minggu ke-${query.week}, ${scopeName}`;
+  const progress = (
+    <>
+      <span className="font-semibold text-ink tabular-nums">{assessed}</span> dari{" "}
+      <span className="tabular-nums">{total}</span> dinilai
+    </>
   );
-  const stationSelect =
-    stationOptions.length > 0 ? <StationSelect options={stationOptions} current={query.station ?? ALL_STATIONS} /> : null;
-  const futureNote = isFuture
-    ? `Minggu ke-${query.week} belum berjalan (mulai ${formatHariTanggal(start)}). Nilai tetap bisa diisi bila penilaian sudah dilakukan.`
-    : null;
-  const label = `Nilai Minggu ke-${query.week}, ${scopeName}`;
   const emptyState = (
-    <EmptyState title={`Belum ada SDM di ${scopeName}`} layout="inline">
-      Tambahkan SDM di Data SDM. Barisnya muncul di sini setelah tersimpan.
+    <EmptyState
+      title={`Belum ada SDM di ${scopeName}`}
+      layout="inline"
+      action={
+        <ButtonLink href={hrefs(access).to("sdm", { stasiun: query.station })} size="sm">
+          Buka Data SDM
+        </ButtonLink>
+      }
+    >
+      SDM ditambahkan di Data SDM.
     </EmptyState>
   );
+  const listKey = `${query.week}-${query.station ?? "semua"}`;
 
   return (
-    <>
-      {/* Phones: the week and station pickers sit above the cards (on desktop they are in the grid toolbar). */}
-      <div className="flex flex-col gap-4 grid:hidden">
-        {weekSelect}
-        {stationSelect}
-      </div>
-
-      <Panel padding="flush" title={label}>
-        <div className="px-4 pb-4">
-          {futureNote ? <p className="mb-3 text-sm text-ink-muted">{futureNote}</p> : null}
-          <ScoreGrid
-            key={`${query.week}-${query.station ?? "semua"}`}
-            caption={label}
-            rows={gridRows}
-            week={query.week}
-            settings={settings}
-            accessKey={access.key}
-            saveAction={saveWeeklyScore}
-            summary={
-              <>
-                <span className="font-semibold text-ink tabular-nums">{assessed}</span> dari {total} SDM sudah dinilai
-              </>
-            }
-            toolbar={
-              <>
-                {weekSelect}
-                {stationSelect}
-              </>
-            }
-            emptyState={emptyState}
-            phone={
-              <div className="-mx-4 flex flex-col gap-4">
-                <div className="flex flex-col gap-2 px-4">
-                  <p className="text-sm text-ink">
-                    <span className="text-xl font-semibold tabular-nums">{assessed}</span>{" "}
-                    <span className="font-semibold">dari {total} SDM sudah dinilai</span>
-                    {query.week === currentWeek ? <span className="text-ink-muted"> minggu ini</span> : null}
-                  </p>
-                  <div aria-hidden="true" className="h-1.5 w-full max-w-md overflow-hidden rounded-control bg-neutral-tint">
-                    <div className="h-full bg-brand" style={{ width: `${percent}%` }} />
-                  </div>
-                </div>
-                {total === 0 ? (
-                  <div className="px-4">{emptyState}</div>
-                ) : (
-                  <WeeklyEntry
-                    key={`${query.week}-${query.station ?? "semua"}`}
-                    accessKey={access.key}
-                    week={query.week}
-                    settings={settings}
-                    groups={groups}
-                    showStationHeadings={groups.length > 1}
-                    label={label}
-                    saveAction={saveWeeklyScore}
-                  />
-                )}
-              </div>
-            }
-          />
+    <ScoreGrid
+      key={listKey}
+      caption={label}
+      rows={gridRows}
+      week={query.week}
+      settings={settings}
+      showStation={showStation}
+      accessKey={access.key}
+      saveAction={saveWeeklyScore}
+      summary={progress}
+      toolbar={filters}
+      emptyState={emptyState}
+      phone={
+        <div className="flex flex-col gap-4">
+          <FilterBar label="Filter penilaian" end={<span>{progress}</span>}>
+            {filters}
+          </FilterBar>
+          {total === 0 ? (
+            emptyState
+          ) : (
+            <div className="rounded-panel border border-line bg-surface">
+              <WeeklyEntry
+                key={listKey}
+                accessKey={access.key}
+                week={query.week}
+                settings={settings}
+                groups={groups}
+                showStationHeadings={groups.length > 1}
+                label={label}
+                saveAction={saveWeeklyScore}
+              />
+            </div>
+          )}
         </div>
-      </Panel>
-    </>
+      }
+    />
   );
 }
 
@@ -293,37 +283,45 @@ function RekapView({
   ws,
   staff,
   scopeName,
+  showStation,
   currentWeek,
+  filters,
 }: {
   ws: Workspace;
   staff: WorkspaceStaff[];
   scopeName: string;
+  showStation: boolean;
   currentWeek: number | null;
+  filters: ReactNode;
 }) {
   const settings = ruleSettings(ws.settings);
   const rows = staff.map((s) => ({
     code: s.code,
     name: s.name,
+    station: s.station,
     rekap: staffRekap(s, ws.weeklyScores, settings),
   }));
   const anyScore = rows.some((r) => r.rekap.weeksAssessed > 0);
 
   return (
-    <Panel padding="flush" title={`Rekap performa, ${scopeName}`}>
-      {!anyScore ? (
-        <div className="border-t border-line px-4">
-          <EmptyState title="Belum ada nilai mingguan di lingkup ini" layout="inline">
-            Rekap terisi setelah nilai disimpan di tab Input mingguan. Pemantauan Minggu ke-1 mulai{" "}
-            {formatHariTanggal(settings.week1Start)}.
-          </EmptyState>
-        </div>
+    <div className="flex flex-col gap-3">
+      <FilterBar label="Filter rekap" end={<span className="tabular-nums">{rows.length} SDM</span>}>
+        {filters}
+      </FilterBar>
+      {rows.length > 0 && !anyScore ? (
+        <EmptyState title={`Belum ada nilai mingguan di ${scopeName}`} layout="inline">
+          Rekap terisi setelah penilaian disimpan.
+        </EmptyState>
       ) : null}
-      <RekapTable
-        caption={`Rekap performa ${scopeName}, Minggu ke-1 sampai ke-${settings.weeks}`}
-        rows={rows}
-        weeks={settings.weeks}
-        currentWeek={currentWeek}
-      />
-    </Panel>
+      <Panel padding="flush">
+        <RekapTable
+          caption={`Rekap penilaian ${scopeName}, Minggu ke-1 sampai ke-${settings.weeks}`}
+          rows={rows}
+          weeks={settings.weeks}
+          currentWeek={currentWeek}
+          showStation={showStation}
+        />
+      </Panel>
+    </div>
   );
 }

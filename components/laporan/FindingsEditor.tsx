@@ -10,7 +10,7 @@ type FindingsEditorProps = {
   /** saveWeeklyFindings bound to the accessKey and week. */
   action: (previous: FindingsState, formData: FormData) => Promise<FindingsState>;
   week: number;
-  /** "Stasiun SUB" / "KPS". */
+  /** "SUB" / "KPS". */
   scopeName: string;
   initialFindings: string;
   /** "Terakhir disimpan … lewat tautan ini", or null when nothing is saved yet. */
@@ -68,8 +68,8 @@ export function FindingsEditor({ action, week, scopeName, initialFindings, lastC
       <form ref={formRef} onSubmit={onSubmit} className="flex flex-col gap-3" data-print="hide">
         <Field
           label={`Temuan ${scopeName}, Minggu ke-${week}`}
-          help="Ditulis PIC atau Manager JOUMPA dan ikut tercetak. Kosongkan lalu simpan untuk menghapus. Ctrl+Enter atau ⌘+Enter juga menyimpan."
-          error={state.status === "error" && state.invalid && !pending ? "Teks temuan ditolak database. Periksa panjang dan isinya." : undefined}
+          help="Ikut tercetak. Kosongkan lalu simpan untuk menghapus. Ctrl+Enter menyimpan."
+          error={state.status === "error" && state.invalid && !pending ? "Teks temuan tidak bisa disimpan. Periksa panjang dan isinya." : undefined}
         >
           <Textarea
             name="findings"

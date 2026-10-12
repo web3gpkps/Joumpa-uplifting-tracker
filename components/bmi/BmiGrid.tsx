@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import {
   DataGrid,
   type CellValue,
@@ -8,12 +8,17 @@ import {
   type GridColumn,
   type SaveRowResult,
 } from "@/components/grid/DataGrid";
-import { StatusChip } from "@/components/ui/StatusChip";
+import { Button } from "@/components/ui/Button";
+import { cx } from "@/components/ui/cx";
+import { StatusChip, type StatusTone } from "@/components/ui/StatusChip";
 import { formatTanggalPendek } from "@/lib/dates";
 import { formatDecimal, formatSignedKg } from "@/lib/format";
-import type { BmiCategory, HeightRequirement } from "@/lib/rules";
+import { bmi, bmiCategory, heightRequirement, type BmiCategory, type HeightRequirement, type Settings } from "@/lib/rules";
 import { saveBmiCheck, saveBmiProfile, type BmiActionResult } from "./actions";
+import { BmiPersonSheet, CLOSED_SHEET, closeSheet, openSheet, type BmiPerson } from "./BmiPersonSheet";
 import { isPlausibleDate } from "./format";
+import { useStableOrder } from "./stable-order";
+import { profileIncomplete } from "./summary";
 
 export type BmiGridCheck = {
   date: string | null;
@@ -34,9 +39,14 @@ export type BmiGridRow = {
   weightDelta: number | null;
   /** Periods with a weight, so Δ berat is shown only from the second weighing. */
   weighings: number;
+  /** From the latest height (every-period view). */
   heightRequirement: HeightRequirement | null;
-  /** "Diubah lewat tautan ini, 8 Okt 07.55" for the latest change to this staff member's checks. */
+  /** "Belum dicek · lewat 3 hari" for the chosen period. */
+  slotStatus: { text: string; tone: StatusTone };
+  /** "tautan ini, 8 Okt 07.55" for the latest change to this person's checks. */
   changed: string | null;
+  /** Profile and history for the per-person sheet. */
+  person: BmiPerson;
 };
 
 type BmiGridProps = {
@@ -44,18 +54,28 @@ type BmiGridProps = {
   rows: BmiGridRow[];
   accessKey: string;
   plannedDates: string[];
-  /** Period whose column group is highlighted and scrolled into view. */
+  /** Date a new check gets per period when Tgl is left empty, index 0 = period 1. */
+  defaultDates: string[];
+  /** The chosen period. */
   period: number;
-  /** Spoken after that group's header: "periode berjalan" or "periode yang dipilih". */
-  periodNote: string;
+  /** false: only the chosen period. true: every period plus the profile columns. */
+  allSlots: boolean;
   showStation: boolean;
-  summary: string;
+  settings: Settings;
   emptyState: ReactNode;
   phone: ReactNode;
 };
 
+const STATUS_TEXT: Record<StatusTone, string> = {
+  good: "text-good",
+  neutral: "text-ink-muted",
+  warning: "text-warning",
+  critical: "text-critical",
+  progress: "text-progress",
+};
+
 export function periodGroup(period: number, plannedDate: string): string {
-  return `Cek ke-${period} (${formatTanggalPendek(plannedDate)})`;
+  return `Periode ${period} · ${formatTanggalPendek(plannedDate)}`;
 }
 
 const rowKey = (r: BmiGridRow) => r.code;
@@ -64,114 +84,154 @@ const SEARCH = { placeholder: "Nama atau ID", text: (r: BmiGridRow) => `${r.code
 
 const FIELD_OF_ERROR: Record<string, string> = { height_cm: "tb", weight_kg: "bb", check_date: "tgl" };
 
+const num = (v: CellValue) => (typeof v === "number" ? v : null);
+
 function chip(value: CellValue) {
   return value ? <StatusChip label={String(value)} /> : null;
 }
 
-function requirementCell(row: BmiGridRow) {
-  if (row.heightRequirement === "Memenuhi" || row.heightRequirement === "Tidak Memenuhi") {
-    return <StatusChip label={row.heightRequirement} />;
-  }
-  // A missing height standard is explained once, under the grid.
-  if (row.heightRequirement === null && row.checks.some(Boolean) && row.gender !== "L" && row.gender !== "P") {
-    return <span className="text-ink-muted">isi L/P</span>;
-  }
+function requirementCell(value: CellValue) {
+  if (value === "Memenuhi" || value === "Tidak Memenuhi") return <StatusChip label={value} />;
+  if (value === "Isi standar di Parameter") return <span className="text-ink-muted">Standar belum diatur</span>;
   return null;
 }
 
+/** Tgl / TB / BB (input) and BMI / Kategori (computed live) of one period. */
+function slotColumns(
+  p: number,
+  planned: string,
+  defaultDate: string,
+  group: string | undefined,
+  settings: Settings,
+): GridColumn<BmiGridRow>[] {
+  const i = p - 1;
+  const check = (r: BmiGridRow) => r.checks[i];
+  const liveBmi = (value: (key: string) => CellValue) => bmi(num(value(`tb_${p}`)), num(value(`bb_${p}`)));
+  return [
+    {
+      key: `tgl_${p}`,
+      header: "Tgl",
+      label: `Tanggal cek periode ${p}, kosong berarti ${formatTanggalPendek(defaultDate)}`,
+      group,
+      width: 108,
+      editor: "date",
+      get: (r) => check(r)?.date ?? null,
+      validate: (value) => (typeof value === "string" && !isPlausibleDate(value) ? "Tanggal tidak valid." : null),
+    },
+    {
+      key: `tb_${p}`,
+      header: "TB",
+      label: `Tinggi badan periode ${p} (cm)`,
+      group,
+      width: 76,
+      editor: "number",
+      min: 120,
+      max: 210,
+      decimals: 1,
+      get: (r) => check(r)?.tb ?? null,
+    },
+    {
+      key: `bb_${p}`,
+      header: "BB",
+      label: `Berat badan periode ${p} (kg)`,
+      group,
+      width: 76,
+      editor: "number",
+      min: 30,
+      max: 200,
+      decimals: 1,
+      get: (r) => check(r)?.bb ?? null,
+    },
+    {
+      key: `bmi_${p}`,
+      header: "BMI",
+      label: `BMI periode ${p}`,
+      group,
+      width: 64,
+      editor: "readonly",
+      align: "end",
+      derive: (_r, value) => liveBmi(value),
+      render: (value) => (typeof value === "number" ? formatDecimal(value, 1) : null),
+    },
+    {
+      key: `kat_${p}`,
+      header: "Kategori",
+      label: `Kategori BMI periode ${p}`,
+      group,
+      width: 112,
+      editor: "readonly",
+      derive: (_r, value) => bmiCategory(liveBmi(value), settings),
+      render: chip,
+    },
+  ];
+}
+
 /**
- * Cek BMI 2 Mingguan as the workbook sheet (docs/UX.md §2): one row per staff member, five
- * column groups "Cek ke-P (tanggal)" with Tgl / TB / BB (input) and BMI / Kategori (computed),
- * then L/P, Δ berat, Syarat tinggi and the programme note. Each row saves itself: one
- * share_save_check per changed period, one share_save_profile when L/P or the note changed.
- * Clearing TB and BB of a stored period asks first (the grid's confirmClear, one group per
- * period); "Batal" puts the values back. Client component.
+ * Cek BMI grid. By default only the chosen period: Tgl, TB, BB (input), BMI, Kategori,
+ * Syarat tinggi and the status line (computed), rows not yet checked first. "Tampilkan
+ * semua cek" shows every period plus L/P, the programme note and Δ berat. Each row saves
+ * itself: one share_save_check per changed period, one share_save_profile when the profile
+ * changed. Clearing TB and BB of a stored period asks first. Client component.
  */
 export function BmiGrid({
   caption,
   rows,
   accessKey,
   plannedDates,
+  defaultDates,
   period,
-  periodNote,
+  allSlots,
   showStation,
-  summary,
+  settings: settingsProp,
   emptyState,
   phone,
 }: BmiGridProps) {
-  // A refresh sends a new array with the same dates: key the memo on the text so the
+  // A refresh sends new arrays with the same dates: key the memos on the text so the
   // columns (and the grid's scroll position) stay put after every save.
   const datesKey = plannedDates.join(",");
+  const defaultsKey = defaultDates.join(",");
+  const settingsKey = JSON.stringify(settingsProp);
+  const settings = useMemo(() => JSON.parse(settingsKey) as Settings, [settingsKey]);
+  const ordered = useStableOrder(rows, rowKey);
+  // The sheet lives outside the grid, so the grid never takes its keys or paste.
+  const [sheet, setSheet] = useState(CLOSED_SHEET);
+  const [sheetCode, setSheetCode] = useState<string | null>(null);
+  const sheetPerson = sheetCode ? (rows.find((r) => r.code === sheetCode)?.person ?? null) : null;
 
   const columns = useMemo<GridColumn<BmiGridRow>[]>(() => {
     const dates = datesKey.split(",");
+    const defaults = defaultsKey.split(",");
     const out: GridColumn<BmiGridRow>[] = [
       { key: "code", header: "ID", width: 84, editor: "readonly", frozen: true },
       { key: "name", header: "Nama", width: 188, editor: "readonly", frozen: true },
     ];
     if (showStation) out.push({ key: "station", header: "Stasiun", width: 72, editor: "readonly" });
-    dates.forEach((planned, i) => {
-      const p = i + 1;
-      const group = periodGroup(p, planned);
-      const check = (r: BmiGridRow) => r.checks[i];
+    if (!allSlots) {
       out.push(
+        ...slotColumns(period, dates[period - 1], defaults[period - 1], undefined, settings),
         {
-          key: `tgl_${p}`,
-          header: "Tgl",
-          label: `Tanggal cek ke-${p}`,
-          group,
-          width: 108,
-          editor: "date",
-          get: (r) => check(r)?.date ?? null,
-          validate: (value) => (typeof value === "string" && !isPlausibleDate(value) ? "Tanggal tidak valid." : null),
-        },
-        {
-          key: `tb_${p}`,
-          header: "TB",
-          label: `Tinggi badan cek ke-${p} (cm)`,
-          group,
-          width: 72,
-          editor: "number",
-          min: 120,
-          max: 210,
-          decimals: 1,
-          get: (r) => check(r)?.tb ?? null,
-        },
-        {
-          key: `bb_${p}`,
-          header: "BB",
-          label: `Berat badan cek ke-${p} (kg)`,
-          group,
-          width: 72,
-          editor: "number",
-          min: 30,
-          max: 200,
-          decimals: 1,
-          get: (r) => check(r)?.bb ?? null,
-        },
-        {
-          key: `bmi_${p}`,
-          header: "BMI",
-          label: `BMI cek ke-${p}`,
-          group,
-          width: 64,
+          key: "syarat",
+          header: "Syarat tinggi",
+          label: `Syarat tinggi periode ${period}`,
+          width: 132,
           editor: "readonly",
-          align: "end",
-          get: (r) => check(r)?.bmi ?? null,
-          render: (value) => (typeof value === "number" ? formatDecimal(value, 1) : null),
+          derive: (r, value) => heightRequirement(num(value(`tb_${period}`)), r.gender, settings),
+          render: requirementCell,
         },
         {
-          key: `kat_${p}`,
-          header: "Kategori",
-          label: `Kategori BMI cek ke-${p}`,
-          group,
-          width: 118,
+          key: "slot_status",
+          header: "Status",
+          width: 240,
           editor: "readonly",
-          get: (r) => check(r)?.category ?? null,
-          render: chip,
+          get: (r) => r.slotStatus.text,
+          render: (_value, r) => <span className={cx("text-sm", STATUS_TEXT[r.slotStatus.tone])}>{r.slotStatus.text}</span>,
         },
       );
-    });
+      return out;
+    }
+    dates.forEach((planned, i) =>
+      out.push(...slotColumns(i + 1, planned, defaults[i], periodGroup(i + 1, planned), settings)),
+    );
     out.push(
       {
         key: "gender",
@@ -181,6 +241,15 @@ export function BmiGrid({
         editor: "select",
         options: [{ value: "L" }, { value: "P" }],
         get: (r) => (r.gender === "L" || r.gender === "P" ? r.gender : null),
+      },
+      {
+        key: "bmi_note",
+        header: "Catatan program BMI",
+        group: "Profil",
+        width: 240,
+        editor: "longtext",
+        maxLength: 2000,
+        get: (r) => r.bmiNote,
       },
       {
         key: "delta",
@@ -196,39 +265,53 @@ export function BmiGrid({
       {
         key: "syarat",
         header: "Syarat tinggi",
-        label: "Syarat tinggi badan",
+        label: "Syarat tinggi, dari tinggi terakhir",
         group: "Profil",
-        width: 136,
+        width: 132,
         editor: "readonly",
         get: (r) => r.heightRequirement,
-        render: (_value, r) => requirementCell(r),
-      },
-      {
-        key: "bmi_note",
-        header: "Catatan program BB",
-        label: "Catatan / program penyesuaian BB",
-        group: "Profil",
-        width: 240,
-        editor: "longtext",
-        maxLength: 2000,
-        get: (r) => r.bmiNote,
+        render: requirementCell,
       },
       {
         key: "changed",
         header: "Terakhir diubah lewat",
-        width: 240,
+        width: 220,
         editor: "readonly",
         render: (_value, r) => (r.changed ? <span className="text-xs text-ink-muted">{r.changed}</span> : null),
       },
     );
     return out;
-  }, [datesKey, showStation]);
+  }, [datesKey, defaultsKey, showStation, allSlots, period, settings]);
+
+  const rowActions = useMemo(
+    () => ({
+      header: "Profil",
+      width: 112,
+      render: (row: BmiGridRow) => {
+        const open = () => {
+          setSheetCode(row.code);
+          setSheet(openSheet);
+        };
+        return profileIncomplete(row.gender) ? (
+          <Button size="sm" variant="secondary" tabIndex={-1} onClick={open}>
+            Isi profil
+            <span className="sr-only"> {row.name}, L/P belum diisi</span>
+          </Button>
+        ) : (
+          <Button size="sm" variant="ghost" tabIndex={-1} onClick={open}>
+            Profil<span className="sr-only"> {row.name}</span>
+          </Button>
+        );
+      },
+    }),
+    [],
+  );
 
   const confirmClear = useMemo<ConfirmClear<BmiGridRow>>(
     () => ({
-      groups: datesKey.split(",").map((_, i) => ({ fields: [`tb_${i + 1}`, `bb_${i + 1}`], label: `ke-${i + 1}` })),
+      groups: datesKey.split(",").map((_, i) => ({ fields: [`tb_${i + 1}`, `bb_${i + 1}`], label: `periode ${i + 1}` })),
       message: (row, labels) => `Hapus cek BMI ${labels.join(" dan ")} untuk ${row.name}?`,
-      description: "TB dan BB periode itu dikosongkan, jadi cek tersebut dihapus. Periode lain tidak berubah.",
+      description: "TB dan BB periode itu dikosongkan, jadi ceknya dihapus. Periode lain tidak berubah.",
       confirmLabel: (labels) => `Hapus cek ${labels.join(" dan ")}`,
     }),
     [datesKey],
@@ -239,8 +322,9 @@ export function BmiGrid({
       const has = (field: string) => field in changes;
       const fieldErrors: Record<string, string> = {};
       const writes: Array<{ period: number; checkDate: string | null; heightCm: number | null; weightKg: number | null }> = [];
+      const defaults = defaultsKey.split(",");
 
-      datesKey.split(",").forEach((planned, i) => {
+      datesKey.split(",").forEach((_planned, i) => {
         const p = i + 1;
         if (!has(`tgl_${p}`) && !has(`tb_${p}`) && !has(`bb_${p}`)) return;
         const stored = row.checks[i];
@@ -261,8 +345,7 @@ export function BmiGrid({
           fieldErrors[`bb_${p}`] = stored ? "Isi BB juga, atau kosongkan TB dan BB untuk menghapus cek." : "Isi BB juga.";
           return;
         }
-        // A new check without a typed date takes the planned date of its period.
-        writes.push({ period: p, checkDate: date ?? planned, heightCm: tb, weightKg: bb });
+        writes.push({ period: p, checkDate: date ?? defaults[i], heightCm: tb, weightKg: bb });
       });
 
       const outcome: { failure: string | null } = { failure: null };
@@ -307,24 +390,37 @@ export function BmiGrid({
         fieldErrors: Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined,
       };
     },
-    [accessKey, datesKey],
+    [accessKey, datesKey, defaultsKey],
   );
 
   return (
-    <DataGrid
-      caption={caption}
-      rows={rows}
-      columns={columns}
-      rowKey={rowKey}
-      rowLabel={rowLabel}
-      onSaveRow={onSaveRow}
-      search={SEARCH}
-      summary={summary}
-      confirmClear={confirmClear}
-      highlightGroup={periodGroup(period, plannedDates[period - 1])}
-      highlightNote={periodNote}
-      emptyState={emptyState}
-      phone={phone}
-    />
+    <>
+      <DataGrid
+        caption={caption}
+        rows={ordered}
+        columns={columns}
+        rowKey={rowKey}
+        rowLabel={rowLabel}
+        onSaveRow={onSaveRow}
+        search={SEARCH}
+        confirmClear={confirmClear}
+        rowActions={rowActions}
+        highlightGroup={allSlots ? periodGroup(period, plannedDates[period - 1]) : undefined}
+        highlightNote={allSlots ? "periode yang dipilih" : undefined}
+        emptyState={emptyState}
+        phone={phone}
+      />
+      {sheetPerson ? (
+        <BmiPersonSheet
+          key={sheet.n}
+          open={sheet.open}
+          onClose={() => setSheet(closeSheet)}
+          accessKey={accessKey}
+          person={sheetPerson}
+          plannedDates={plannedDates}
+          period={period}
+        />
+      ) : null}
+    </>
   );
 }

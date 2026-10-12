@@ -6,6 +6,7 @@ import { formatScore, formatSignedScore } from "@/lib/format";
 export type RekapRow = {
   code: string;
   name: string;
+  station: string;
   rekap: StaffRekap;
 };
 
@@ -13,28 +14,30 @@ type RekapTableProps = {
   caption: string;
   rows: RekapRow[];
   weeks: number;
-  /** Current programme week (column gets the --brand-tint the rail uses), or null outside the programme. */
+  /** Current programme week (its header is marked in the accent), or null outside the programme. */
   currentWeek: number | null;
+  /** Show the Stasiun column (KPS or owner looking at every station). */
+  showStation: boolean;
 };
 
 /**
- * Rekap Performa: staff × Mg 1..N weekly averages, latest score, gain vs the training
- * baseline, weeks assessed, current status (criteria 6.2 with post-test) and trend.
- * Weeks without a score stay blank (never 0). Server component.
+ * Rekap penilaian: person × Mg 1..N weekly averages, the training baseline, latest score,
+ * gain, weeks assessed, current status and trend (lib/rules staffRekap). Weeks without a
+ * score stay blank (never 0). Server component.
  */
-export function RekapTable({ caption, rows, weeks, currentWeek }: RekapTableProps) {
+export function RekapTable({ caption, rows, weeks, currentWeek, showStation }: RekapTableProps) {
   const weekNumbers = Array.from({ length: weeks }, (_, i) => i + 1);
-  const columns = 2 + weeks + 5;
-  const currentCell = "bg-brand-tint";
+  const columns = 2 + (showStation ? 1 : 0) + weeks + 5;
 
   return (
-    <DataTable caption={caption} hideCaption density="dense" minWidth={`${44 + weeks * 4}rem`}>
+    <DataTable caption={caption} hideCaption density="dense" minWidth={`${46 + weeks * 4}rem`}>
       <thead>
         <tr>
           <Th>SDM</Th>
-          <Th numeric>Baseline pelatihan</Th>
+          {showStation ? <Th>Stasiun</Th> : null}
+          <Th numeric>Baseline</Th>
           {weekNumbers.map((w) => (
-            <Th key={w} numeric className={w === currentWeek ? currentCell : undefined}>
+            <Th key={w} numeric className={w === currentWeek ? "text-accent" : undefined}>
               <span aria-hidden="true">Mg {w}</span>
               <span className="sr-only">
                 Minggu ke-{w}
@@ -43,8 +46,8 @@ export function RekapTable({ caption, rows, weeks, currentWeek }: RekapTableProp
             </Th>
           ))}
           <Th numeric>Skor terkini</Th>
-          <Th numeric>Kenaikan vs baseline</Th>
-          <Th numeric>Jml minggu dinilai</Th>
+          <Th numeric>Kenaikan</Th>
+          <Th numeric>Minggu dinilai</Th>
           <Th>Status terkini</Th>
           <Th>Tren</Th>
         </tr>
@@ -52,18 +55,23 @@ export function RekapTable({ caption, rows, weeks, currentWeek }: RekapTableProp
       <tbody>
         {rows.length === 0 ? (
           <DataTableEmpty colSpan={columns} title="Belum ada SDM di lingkup ini">
-            Tambahkan SDM di halaman SDM; rekap terisi setelah nilai mingguan mereka disimpan.
+            SDM ditambahkan di Data SDM.
           </DataTableEmpty>
         ) : (
-          rows.map(({ code, name, rekap }) => (
+          rows.map(({ code, name, station, rekap }) => (
             <tr key={code}>
               <Th scope="row" className="sm:min-w-52">
                 <span className="block font-semibold text-ink">{name}</span>
                 <span className="block text-xs font-normal text-ink-muted tabular-nums">{code}</span>
               </Th>
+              {showStation ? (
+                <Td>
+                  <span className="station-code">{station}</span>
+                </Td>
+              ) : null}
               <Td numeric>{formatScore(rekap.baselineAvg)}</Td>
               {rekap.weekly.map((value, i) => (
-                <Td key={i} numeric className={i + 1 === currentWeek ? currentCell : undefined}>
+                <Td key={i} numeric>
                   {formatScore(value)}
                 </Td>
               ))}

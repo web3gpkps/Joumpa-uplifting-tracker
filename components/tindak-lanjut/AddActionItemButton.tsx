@@ -37,6 +37,7 @@ export function AddActionItemButton({ accessKey, existing, defaultGroup }: AddAc
   return (
     <>
       <Button
+        variant="secondary"
         onClick={() => {
           setRound((n) => n + 1);
           setOpen(true);
@@ -44,7 +45,7 @@ export function AddActionItemButton({ accessKey, existing, defaultGroup }: AddAc
       >
         Tambah butir
       </Button>
-      <span role="status" aria-live="polite" className="text-sm font-semibold text-good">
+      <span role="status" aria-live="polite" className="self-center text-sm font-semibold text-good empty:hidden">
         {notice}
       </span>
       <Dialog open={open} onClose={() => setOpen(false)} size="md" title="Tambah butir tindak lanjut">
@@ -115,9 +116,6 @@ function AddForm({
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-      <p className="text-sm text-ink-muted">
-        Butir baru mulai dengan status Belum Mulai dan progres 0%. Stasiun di laporan ini langsung melihatnya.
-      </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Laporan" error={errors.reportGroup} required>
           <Select value={group} onChange={(e) => chooseGroup(e.target.value)}>
@@ -129,7 +127,7 @@ function AddForm({
             ))}
           </Select>
         </Field>
-        <Field label="ID" help="Diusulkan otomatis: nomor berikutnya di laporan itu." error={errors.code} required>
+        <Field label="ID" help="Diusulkan otomatis" error={errors.code} required>
           <Input
             value={code}
             onChange={(e) => {
@@ -166,7 +164,7 @@ function AddForm({
         <Field label="Batas waktu tetap" error={errors.dueDate}>
           <Input type="date" value={values.dueDate} onChange={(e) => set("dueDate")(e.target.value)} />
         </Field>
-        <Field label="Aturan batas waktu" help="Kosong: pakai batas waktu tetap." error={errors.dueRule}>
+        <Field label="Aturan batas waktu" error={errors.dueRule}>
           <Select value={values.dueRule} onChange={(e) => set("dueRule")(e.target.value)}>
             <option value="">Tetap</option>
             {DUE_RULES.map((r) => (

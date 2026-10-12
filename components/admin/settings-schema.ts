@@ -42,14 +42,14 @@ export const SETTING_SECTIONS: SettingSection[] = [
       {
         key: "week1_start",
         kind: "date",
-        label: "Tanggal mulai Minggu ke-1 (Senin)",
-        help: "Minggu berikutnya dihitung dari tanggal ini.",
+        label: "Tanggal mulai Minggu ke-1",
+        help: "Hari Senin",
       },
       {
         key: "weeks",
         kind: "int",
         label: "Jumlah minggu pemantauan",
-        help: "1 sampai 20.",
+        help: "1 sampai 20",
         unit: "minggu",
       },
     ],
@@ -62,20 +62,20 @@ export const SETTING_SECTIONS: SettingSection[] = [
         key: "bmi_first_check",
         kind: "date",
         label: "Tanggal cek BMI periode 1",
-        help: "Periode berikutnya dihitung dari tanggal ini.",
+        help: "Periode berikutnya dijadwalkan dari tanggal ini",
       },
       {
         key: "bmi_interval_days",
         kind: "int",
-        label: "Interval cek BMI (hari)",
-        help: "1 sampai 90 hari.",
+        label: "Interval cek BMI",
+        help: "1 sampai 90 hari",
         unit: "hari",
       },
       {
         key: "bmi_periods",
         kind: "int",
         label: "Jumlah periode cek BMI",
-        help: "1 sampai 10.",
+        help: "1 sampai 10",
         unit: "kali",
       },
     ],
@@ -87,15 +87,15 @@ export const SETTING_SECTIONS: SettingSection[] = [
       {
         key: "bmi_underweight_below",
         kind: "decimal",
-        label: "BMI kategori Kurus jika <",
-        help: "Klasifikasi IMT Kemenkes RI.",
+        label: "Kurus di bawah BMI",
+        help: "Kemenkes RI: 18,5",
       },
-      { key: "bmi_normal_max", kind: "decimal", label: "BMI Normal s.d.", help: "Tidak di bawah batas Kurus." },
+      { key: "bmi_normal_max", kind: "decimal", label: "Normal sampai BMI", help: "Kemenkes RI: 25,0" },
       {
         key: "bmi_overweight_max",
         kind: "decimal",
-        label: "BMI Overweight s.d. (di atasnya Obesitas)",
-        help: "Tidak di bawah batas Normal, paling tinggi 100.",
+        label: "Overweight sampai BMI",
+        help: "Di atasnya Obesitas. Kemenkes RI: 27,0",
       },
     ],
   },
@@ -106,15 +106,15 @@ export const SETTING_SECTIONS: SettingSection[] = [
       {
         key: "min_height_female",
         kind: "optional-decimal",
-        label: "Tinggi minimal petugas Perempuan (cm)",
-        help: "120 sampai 210 cm. Kosong: syarat tinggi belum dinilai.",
+        label: "Tinggi minimal perempuan",
+        help: "120 sampai 210 cm, boleh kosong",
         unit: "cm",
       },
       {
         key: "min_height_male",
         kind: "optional-decimal",
-        label: "Tinggi minimal petugas Laki-laki (cm)",
-        help: "120 sampai 210 cm. Kosong: syarat tinggi belum dinilai.",
+        label: "Tinggi minimal laki-laki",
+        help: "120 sampai 210 cm, boleh kosong",
         unit: "cm",
       },
     ],
@@ -127,19 +127,19 @@ export const SETTING_SECTIONS: SettingSection[] = [
         key: "pass_avg_min",
         kind: "decimal",
         label: "Rata-rata praktik minimal Sesuai",
-        help: "1 sampai 5.",
+        help: "1 sampai 5",
       },
       {
         key: "improve_avg_min",
         kind: "decimal",
         label: "Rata-rata praktik minimal Perlu Perbaikan",
-        help: "Di bawahnya Tidak Sesuai. 1 sampai 5, tidak di atas batas Sesuai.",
+        help: "Di bawahnya Tidak Sesuai",
       },
       {
         key: "posttest_min",
         kind: "decimal",
         label: "Post-test minimal",
-        help: "0 sampai 100.",
+        help: "0 sampai 100",
       },
     ],
   },
@@ -150,8 +150,8 @@ export const SETTING_SECTIONS: SettingSection[] = [
       {
         key: "replacement_deadline",
         kind: "date",
-        label: "Batas waktu penggantian SDM",
-        help: "Dipakai untuk status ketepatan waktu.",
+        label: "Batas penggantian SDM",
+        help: "Dasar status ketepatan waktu",
       },
     ],
   },
@@ -193,7 +193,7 @@ function isIsoDate(value: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
 
-/** True for a valid date that is not a Monday (the workbook schedules both on Mondays). */
+/** True for a valid date that is not a Monday (both schedules start on a Monday). */
 export function notMonday(value: string): boolean {
   return isIsoDate(value) && new Date(`${value}T00:00:00Z`).getUTCDay() !== 1;
 }

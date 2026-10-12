@@ -136,17 +136,9 @@ export function byUrgency(a: ActionView, b: ActionView): number {
   );
 }
 
-export function byWorkbookOrder(a: ActionView, b: ActionView): number {
-  return a.sortOrder - b.sortOrder || a.code.localeCompare(b.code);
-}
-
 /** Sisa hari in words. Null (done, or no due date) is "Tidak dihitung". */
 export function describeDaysLeft(days: number | null): string {
   if (days === null) return "Tidak dihitung";
   const text = relativeDays(days);
   return text.charAt(0).toUpperCase() + text.slice(1);
-}
-
-export function needsAttention(view: ActionView): boolean {
-  return view.urgency <= 1;
 }

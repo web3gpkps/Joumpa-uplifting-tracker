@@ -1,21 +1,25 @@
-/** Share-link scopes and the shapes the Tautan stasiun screen passes around. */
+/** Share-link scopes and the shapes the Tautan Akses screen passes around. */
 
-export const LINK_SCOPES = ["SUB", "DPS", "CGK", "HLP", "KNO", "KPS"] as const;
+export const KPS_SCOPE = "KPS";
+
+/** Same order as the dialog's Lingkup select: KPS first, then the stations. */
+export const LINK_SCOPES = ["KPS", "SUB", "DPS", "CGK", "HLP", "KNO"] as const;
 export type LinkScope = (typeof LINK_SCOPES)[number];
 
 export function isLinkScope(value: string): value is LinkScope {
   return (LINK_SCOPES as readonly string[]).includes(value);
 }
 
-/** What each scope opens, in the words the share page itself uses (lib/workspace scopeLabel). */
-export const SCOPE_DESCRIPTION: Record<LinkScope, string> = {
-  SUB: "Stasiun SUB: data SUB saja",
-  DPS: "Stasiun DPS: data DPS saja",
-  CGK: "Stasiun CGK: data CGK, tindak lanjut laporan CGK & HLP",
-  HLP: "Stasiun HLP: data HLP, tindak lanjut laporan CGK & HLP",
-  KNO: "Stasiun KNO: data KNO saja",
-  KPS: "KPS: semua stasiun, termasuk Catatan KPS dan definisi tindak lanjut",
-};
+/** What a scope opens, as short field help. CGK and HLP share the CGK & HLP report. */
+export function scopeDescription(scope: string): string {
+  if (scope === KPS_SCOPE) return "Semua stasiun, termasuk Catatan KPS";
+  if (scope === "CGK" || scope === "HLP") return `Data stasiun ${scope}, tindak lanjut laporan CGK & HLP`;
+  return `Data stasiun ${scope} saja`;
+}
+
+export function scopeName(scope: string): string {
+  return scope === KPS_SCOPE ? "KPS" : `Stasiun ${scope}`;
+}
 
 export type LinkRow = {
   id: string;

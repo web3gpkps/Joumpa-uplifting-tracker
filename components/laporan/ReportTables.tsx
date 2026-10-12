@@ -1,13 +1,82 @@
 /*
- * Laporan Mingguan sections A, C and the table of D, with the workbook's columns.
- * Section B is Dashboard section 1 (ActionProgressTable). Rows come from lib/aggregate
- * weeklyReport(); nothing is recomputed here.
+ * Laporan Mingguan sections A to D as tables. Rows come from lib/aggregate weeklyReport();
+ * nothing is recomputed here.
  */
-import type { BmiPeriodRow, TrendRow, WeeklyPerformanceRow } from "@/lib/aggregate";
+import type { ReactNode } from "react";
+import { TOTAL, type ActionProgressRow, type BmiPeriodRow, type TrendRow, type WeeklyPerformanceRow } from "@/lib/aggregate";
 import { DataTable, Td, Th, Tr } from "@/components/ui/DataTable";
-import { ColTh, RowTh, totalRowClass } from "@/components/ringkasan/DashboardTables";
-import { formatRatio, formatScore, formatSignedScore } from "@/lib/format";
-import { Value } from "@/components/ringkasan/format";
+import { formatProgress, formatRatio, formatScore, formatSignedScore } from "@/lib/format";
+import { Flagged, Value } from "@/components/ringkasan/format";
+
+/** Column header that may wrap onto two lines, so wide sections fit an A4 landscape page. */
+export function ColTh({ children, numeric = true }: { children: ReactNode; numeric?: boolean }) {
+  return (
+    <Th numeric={numeric} className="min-w-18 align-bottom whitespace-normal">
+      {children}
+    </Th>
+  );
+}
+
+/** Row label cell; the TOTAL / SEMUA row reads heavier, like the workbook's bold total line. */
+export function RowTh({ children }: { children: ReactNode }) {
+  return (
+    <Th scope="row" className="font-semibold whitespace-nowrap text-ink">
+      {children}
+    </Th>
+  );
+}
+
+export function totalRowClass(key: string): string | undefined {
+  return key === TOTAL || key === "SEMUA" ? "font-semibold [&>*]:bg-bg" : undefined;
+}
+
+type TableProps<T> = { caption: string; rows: T[]; hideCaption?: boolean };
+
+/** B: action items per report group. */
+export function ActionProgressTable({ caption, rows, hideCaption = true }: TableProps<ActionProgressRow>) {
+  return (
+    <DataTable caption={caption} hideCaption={hideCaption} stickyHeader={false} density="dense">
+      <thead>
+        <tr>
+          <Th className="align-bottom">Laporan</Th>
+          <ColTh>Total butir</ColTh>
+          <ColTh>Selesai</ColTh>
+          <ColTh>On Progress</ColTh>
+          <ColTh>Belum Mulai</ColTh>
+          <ColTh>Tertunda</ColTh>
+          <ColTh>OVERDUE</ColTh>
+          <ColTh>Jatuh tempo ≤ 7 hari</ColTh>
+          <ColTh>% Selesai</ColTh>
+          <ColTh>Rata-rata % progres</ColTh>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <Tr key={r.key} className={totalRowClass(r.key)}>
+            <RowTh>{r.key}</RowTh>
+            <Td numeric>{r.total}</Td>
+            <Td numeric>{r.selesai}</Td>
+            <Td numeric>{r.onProgress}</Td>
+            <Td numeric>{r.belumMulai}</Td>
+            <Td numeric>{r.tertunda}</Td>
+            <Td numeric>
+              <Flagged n={r.overdue} tone="critical" />
+            </Td>
+            <Td numeric>
+              <Flagged n={r.dueSoon} tone="warning" />
+            </Td>
+            <Td numeric>
+              <Value value={r.pctDone} format={formatRatio} />
+            </Td>
+            <Td numeric>
+              <Value value={r.avgProgress} format={formatProgress} />
+            </Td>
+          </Tr>
+        ))}
+      </tbody>
+    </DataTable>
+  );
+}
 
 export function WeeklyPerformanceTable({ caption, rows }: { caption: string; rows: WeeklyPerformanceRow[] }) {
   return (
@@ -21,7 +90,7 @@ export function WeeklyPerformanceTable({ caption, rows }: { caption: string; row
           <ColTh>Rata-rata minggu lalu</ColTh>
           <ColTh>Perubahan vs minggu lalu</ColTh>
           <ColTh>Rata-rata baseline training</ColTh>
-          <ColTh>Kenaikan vs baseline*</ColTh>
+          <ColTh>Kenaikan vs baseline</ColTh>
           <ColTh>Sesuai</ColTh>
           <ColTh>Perlu Perbaikan</ColTh>
           <ColTh>Tidak Sesuai</ColTh>

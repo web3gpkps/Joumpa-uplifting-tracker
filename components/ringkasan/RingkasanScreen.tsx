@@ -10,7 +10,7 @@ export function RingkasanLoading() {
   return <PageLoading title="Beranda" label="Memuat beranda" />;
 }
 
-/** Workbook sheet "Dashboard": what needs attention now, then sections 1 to 4. */
+/** Beranda: this week's to-do list for a station; the station table for KPS and the owner. */
 export function RingkasanScreen({ access, ws, searchParams }: ScreenProps) {
   const stationFilter = parseStation(ws, searchParams.stasiun);
   return (

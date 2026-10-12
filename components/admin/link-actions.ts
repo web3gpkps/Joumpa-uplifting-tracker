@@ -36,7 +36,7 @@ export async function createShareLink(scope: string, rawLabel: string): Promise<
   const label = cleanLabel(rawLabel);
   const fieldErrors: { scope?: string; label?: string } = {};
   if (!isLinkScope(scope)) fieldErrors.scope = "Pilih lingkup tautan.";
-  if (!label) fieldErrors.label = "Isi label, misalnya nama atau jabatan pemegang tautan.";
+  if (!label) fieldErrors.label = "Isi label, misalnya nama pemegang tautan.";
   else if (label.length > MAX_LABEL) fieldErrors.label = `Maksimal ${MAX_LABEL} karakter.`;
   if (fieldErrors.scope || fieldErrors.label) {
     return { ok: false, message: "Periksa isian yang ditandai.", fieldErrors };

@@ -1,5 +1,8 @@
 /** Plain-language names for sync_conflicts rows (docs/SYNC.md, "Resolving conflicts"). */
 
+import { SYNC_TABLES } from "@/lib/sync/tables";
+import { SETTING_FIELDS } from "./settings-schema";
+
 export const TABLE_LABEL: Record<string, string> = {
   staff: "SDM",
   weekly_scores: "Penilaian Mingguan",
@@ -11,17 +14,28 @@ export const TABLE_LABEL: Record<string, string> = {
 };
 
 export const RESOLUTION_LABEL: Record<string, string> = {
-  "db-wins": "Database dipakai, nilai Google Sheet ditimpa",
-  "sheet-wins": "Nilai Google Sheet dipakai, nilai database ditimpa",
+  "db-wins": "Nilai aplikasi dipakai, Google Sheet ditimpa",
+  "sheet-wins": "Nilai Google Sheet dipakai",
   "rejected:invalid_value": "Ditolak: nilai di Google Sheet tidak valid",
-  "rejected:required_missing": "Ditolak: kolom wajib kosong",
+  "rejected:required_missing": "Ditolak: isian wajib kosong",
   "rejected:unknown_parent": "Ditolak: ID SDM tidak dikenal",
-  "rejected:duplicate_key": "Ditolak: kunci baris ganda",
-  "rejected:missing_key": "Ditolak: kunci baris kosong",
+  "rejected:duplicate_key": "Ditolak: baris ganda",
+  "rejected:missing_key": "Ditolak: ID baris kosong",
   "rejected:unknown_setting": "Ditolak: parameter tidak dikenal",
-  "rejected:deletes_skipped": "Penghapusan dilewati oleh pengaman",
-  "rejected:header_error": "Ditolak: judul kolom tab rusak",
+  "rejected:deletes_skipped": "Penghapusan dilewati",
+  "rejected:header_error": "Ditolak: judul kolom berubah",
+  "rejected:no_sheet_row": "Tidak ada baris untuk data ini di Google Sheet",
+  "rejected:incomplete_row": "Ditolak: baris di Google Sheet belum lengkap",
 };
+
+/** The product name of a logged column (Parameter: the label the Parameter form uses). */
+export function columnLabel(table: string, column: string | null, rowKey: string | null): string | null {
+  if (column === null) return null;
+  if (table === "settings") return SETTING_FIELDS.find((f) => f.key === rowKey)?.label ?? column;
+  if (column === "db" || column === "sheet") return column === "db" ? "Penghapusan di aplikasi" : "Penghapusan di Google Sheet";
+  const header = SYNC_TABLES.find((t) => t.table === table)?.columns.find((c) => c.db === column)?.header;
+  return header ?? column;
+}
 
 /** A jsonb cell as text: strings as-is, everything else as compact JSON. */
 export function jsonText(value: unknown): string | null {

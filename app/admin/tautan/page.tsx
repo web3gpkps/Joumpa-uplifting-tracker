@@ -1,28 +1,25 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { PageHeader, PageLoading } from "@/components/ui/PageHeader";
 import { Panel } from "@/components/ui/Panel";
-import { ErrorState, LoadingState } from "@/components/ui/States";
+import { ErrorState } from "@/components/ui/States";
 import { ReloadButton } from "@/components/ui/ReloadButton";
 import { LinksManager } from "@/components/admin/LinksManager";
-import type { LinkRow } from "@/components/admin/link-types";
+import { LINK_SCOPES, type LinkRow } from "@/components/admin/link-types";
 import { requireAdmin } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { linkAccess } from "@/lib/workspace/access";
 
 export const metadata: Metadata = { title: "Tautan Akses" };
 
-const SCOPE_ORDER = ["SUB", "DPS", "CGK", "HLP", "KNO", "KPS"];
+const TITLE = "Tautan Akses";
 
 export default function TautanPage() {
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Tautan Akses" />
-      <Suspense fallback={<LoadingState label="Memuat daftar tautan" />}>
-        <LinksData />
-      </Suspense>
-    </div>
+    <Suspense fallback={<PageLoading title={TITLE} label="Memuat daftar tautan" />}>
+      <LinksData />
+    </Suspense>
   );
 }
 
@@ -44,17 +41,25 @@ async function LinksData() {
 
   if (error) {
     return (
-      <Panel>
-        <ErrorState
-          title="Daftar tautan tidak bisa dimuat"
-          cause="Server tidak menjawab."
-          action={<ReloadButton />}
-        />
-      </Panel>
+      <div className="flex flex-col gap-6">
+        <PageHeader title={TITLE} />
+        <Panel>
+          <ErrorState
+            title="Daftar tautan tidak bisa dimuat"
+            cause="Server tidak menjawab."
+            action={<ReloadButton>Coba lagi</ReloadButton>}
+          />
+        </Panel>
+      </div>
     );
   }
 
   const base = await origin();
+  // KPS first, then stations; an unknown scope sorts last.
+  const rank = (scope: string) => {
+    const i = (LINK_SCOPES as readonly string[]).indexOf(scope);
+    return i < 0 ? LINK_SCOPES.length : i;
+  };
   const links: LinkRow[] = (data ?? [])
     .map((row) => ({
       id: row.id,
@@ -69,10 +74,10 @@ async function LinksData() {
     }))
     .sort(
       (a, b) =>
-        SCOPE_ORDER.indexOf(a.scope) - SCOPE_ORDER.indexOf(b.scope) ||
+        rank(a.scope) - rank(b.scope) ||
         Number(a.isQa) - Number(b.isQa) ||
         b.createdAt.localeCompare(a.createdAt),
     );
 
-  return <LinksManager links={links} />;
+  return <LinksManager title={TITLE} links={links} />;
 }

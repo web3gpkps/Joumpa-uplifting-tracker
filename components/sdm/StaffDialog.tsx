@@ -50,8 +50,8 @@ export function StaffDialog(props: StaffDialogProps) {
       title={adding ? "Tambah SDM" : `Ubah data ${row.name}`}
       description={
         adding
-          ? "Untuk SDM yang belum ikut pelatihan atau SDM pengganti. Kode TMB dibuat otomatis saat disimpan."
-          : `${row.code}, Stasiun ${row.station}. ${row.changedLabel}.`
+          ? "SDM baru atau pengganti. ID dibuat otomatis."
+          : `${row.code} · ${row.station} · ${row.changedLabel}`
       }
     >
       {open ? <StaffForm key={props.formKey} {...props} onSavingChange={setSaving} /> : null}
@@ -193,7 +193,7 @@ function StaffForm({
         return;
       }
       const message = result.saved
-        ? `Data profil tersimpan, tetapi data pelatihan gagal disimpan: ${result.error.message}`
+        ? `Profil tersimpan, data pelatihan gagal: ${result.error.message}`
         : result.error.message;
       if (result.error.field) {
         setErrors({ [result.error.field]: result.error.message });
@@ -201,7 +201,7 @@ function StaffForm({
       }
       setFormError(message);
     } catch {
-      setFormError("Koneksi ke server terputus. Isian Anda masih ada; coba simpan lagi.");
+      setFormError("Koneksi terputus. Isian masih ada; simpan lagi.");
     }
     setBusy(false);
   }
@@ -240,10 +240,10 @@ function StaffForm({
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="NIPP" error={errors.nipp} help={row?.duplicateNippWith.length ? `Sama dengan ${row.duplicateNippWith.join(", ")}` : undefined}>
+        <Field label="NIPP" error={errors.nipp} help={row?.duplicateNippWith.length ? `NIPP ganda: sama dengan ${row.duplicateNippWith.join(", ")}` : undefined}>
           <Input value={nipp} onChange={(e) => setNipp(e.target.value)} maxLength={50} autoComplete="off" inputMode="numeric" />
         </Field>
-        <Field label="L/P" help="Dipakai untuk syarat tinggi badan di halaman BMI." error={errors.gender}>
+        <Field label="L/P" help="Untuk syarat tinggi badan." error={errors.gender}>
           <Select value={gender} onChange={(e) => setGender(e.target.value)}>
             <option value="">Belum diisi</option>
             <option value="L">L (laki-laki)</option>
@@ -268,16 +268,16 @@ function StaffForm({
 
       {editBaseline ? (
         <fieldset className="flex flex-col gap-4 rounded-panel border border-line p-4">
-          <legend className="px-1 text-sm font-semibold text-ink">Data pelatihan (hanya tautan KPS)</legend>
+          <legend className="px-1 text-sm font-semibold text-ink">Data pelatihan</legend>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Pre-test" error={errors.pre_test} help="Angka 0 sampai 100.">
+            <Field label="Pre-test" error={errors.pre_test} help="0 sampai 100">
               <NumberInput
                 decimal
                 value={baseline.preTest}
                 onChange={(e) => setBaseline({ ...baseline, preTest: e.target.value })}
               />
             </Field>
-            <Field label="Post-test" error={errors.post_test} help={`Lulus bila ${formatDecimal(settings.posttestMin, 0, 2)} atau lebih.`}>
+            <Field label="Post-test" error={errors.post_test} help={`Lulus ${formatDecimal(settings.posttestMin, 0, 2)} atau lebih`}>
               <NumberInput
                 decimal
                 value={baseline.postTest}
@@ -303,7 +303,7 @@ function StaffForm({
               </Field>
             ))}
           </div>
-          <Field label="Kesimpulan di laporan" error={errors.report_conclusion}>
+          <Field label="Kesimpulan" help="Dari laporan pelatihan" error={errors.report_conclusion}>
             <Select
               value={baseline.reportConclusion}
               onChange={(e) => setBaseline({ ...baseline, reportConclusion: e.target.value })}
@@ -319,25 +319,25 @@ function StaffForm({
           <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-3" aria-live="polite">
             <div>
               <dt className="section-label">Rata-rata praktik</dt>
-              <dd className="font-semibold tabular-nums">{formatScore(preview.practiceAvg) || "Belum ada nilai"}</dd>
+              <dd className="font-semibold tabular-nums">{formatScore(preview.practiceAvg) || "–"}</dd>
             </div>
             <div>
-              <dt className="section-label">Status kriteria kelulusan</dt>
+              <dt className="section-label">Status kriteria</dt>
               <dd>
-                <StatusChip label={preview.criteriaStatus} />
+                <StatusChip label={preview.criteriaStatus} emptyLabel="–" />
               </dd>
             </div>
             <div>
-              <dt className="section-label">Cek konsistensi</dt>
+              <dt className="section-label">Konsistensi</dt>
               <dd>
-                <StatusChip label={preview.consistency} emptyLabel="Belum bisa dicek" />
+                <StatusChip label={preview.consistency} emptyLabel="–" />
               </dd>
             </div>
           </dl>
         </fieldset>
       ) : !adding ? (
         <p className="text-sm text-ink-muted">
-          Data pelatihan (pre/post-test, nilai A sampai F, kesimpulan laporan) hanya bisa diubah lewat tautan KPS.
+          Data pelatihan diubah oleh KPS.
         </p>
       ) : null}
 

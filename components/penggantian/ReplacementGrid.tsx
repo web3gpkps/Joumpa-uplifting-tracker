@@ -22,7 +22,7 @@ type ReplacementGridProps = {
   rows: ReplacementGridRow[];
   ctx: ReplacementContext;
   summary: string;
-  actions: ReactNode;
+  actions?: ReactNode;
   phone: ReactNode;
 };
 
@@ -33,7 +33,6 @@ const SEARCH = {
   text: (r: ReplacementGridRow) => `${r.replacedName} ${r.staffCode ?? ""} ${r.replacementName ?? ""}`,
 };
 
-/** Server field name (share_save_replacement DETAIL) → grid column key. */
 /** Plain-language messages for share_save_replacement's invalid_input fields. */
 const FIELD_MESSAGE: Record<string, string> = {
   station: "Pilih stasiun yang benar.",
@@ -45,6 +44,7 @@ const FIELD_MESSAGE: Record<string, string> = {
   reported: "Pilih Ya atau Belum.",
 };
 
+/** Server field name (share_save_replacement DETAIL, or the action's camelCase name) → grid column key. */
 const COLUMN_OF_FIELD: Record<string, string> = {
   station: "station",
   report_group: "station",
@@ -56,6 +56,15 @@ const COLUMN_OF_FIELD: Record<string, string> = {
   practice_avg: "practice_avg",
   reported: "reported",
   notes: "notes",
+  withdrawn_on: "withdrawn_on",
+  effective_on: "effective_on",
+  training_on: "training_on",
+  staffCode: "staff_code",
+  replacedName: "replaced_name",
+  replacementName: "replacement_name",
+  withdrawnOn: "withdrawn_on",
+  effectiveOn: "effective_on",
+  trainingOn: "training_on",
 };
 
 function chip(value: CellValue) {
@@ -80,7 +89,7 @@ function againstMinimum(value: CellValue, min: number, digits: number) {
 }
 
 /**
- * Penggantian SDM as the workbook sheet (docs/UX.md §2): one row per replacement, every input
+ * Penggantian SDM as an entry grid: one row per replacement, every input
  * inline, Status kelulusan and Ketepatan waktu computed read-only, "Hapus" per row. A row
  * saves itself through share_save_replacement, which writes every field, so the changed
  * cells are merged with the stored row. Client component.
@@ -268,7 +277,7 @@ export function ReplacementGrid({ caption, rows, ctx, summary, actions, phone }:
           notes: pick<string | null>("notes", row.notes),
         });
       } catch {
-        return { ok: false, message: "Koneksi ke server terputus. Isian tetap ada; coba simpan lagi." };
+        return { ok: false, message: "Koneksi terputus. Isian masih ada, simpan lagi." };
       }
       if (result.ok) return { ok: true };
       const field = result.error.code === "invalid_input" ? result.error.field : undefined;

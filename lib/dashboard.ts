@@ -1,224 +1,334 @@
 /*
- * Dashboard parts (docs/UX.md §3): the KPI strip and the station comparison, built only
- * from lib/aggregate and lib/rules so they always agree with the workbook tables.
- * Pure: links are { sheet, query } and the screen turns them into hrefs(access).
+ * Beranda: this week's work per station and the station table (worst first). Built only
+ * from lib/aggregate and lib/rules, so every number agrees with Laporan Mingguan and the
+ * input screens. Pure: "today" is an argument, links are { sheet, query } and the screen
+ * turns them into hrefs(access).
  */
 import {
   TOTAL,
   actionProgress,
   bmiPeriodByStation,
-  performanceByStation,
   reportGroups,
   staffDerived,
   weeklyPerformance,
+  type ActionProgressRow,
   type TrackerData,
 } from "./aggregate";
-import { formatHariTanggal, formatTanggal } from "./dates";
-import { bmiCheckDate, reportGroupOf, replacementTimeliness, weekEnd, weekOfDate } from "./rules";
+import { formatHariTanggal, formatTanggal, type IsoDate } from "./dates";
+import { bmiCheckDate, reportGroupOf, replacementTimeliness, sameText, weekEnd, weekOfDate, type Settings } from "./rules";
+import type { SheetKey } from "./workspace/access";
 
-export type DashboardSheet = "dashboard" | "sdm" | "performa" | "bmi" | "tindakLanjut" | "penggantian" | "laporan";
-export type DashboardLink = { sheet: DashboardSheet; query?: Record<string, string | number | null> };
+export type DashboardLink = { sheet: SheetKey; query?: Record<string, string | number | null> };
 
-export type Kpi = {
-  key: "tl-selesai" | "tl-overdue" | "dinilai" | "bmi" | "penggantian";
-  label: string;
-  /** null: nothing to count yet (before the programme or the first BMI check). */
-  value: number | null;
-  /** Denominator for "n dari m"; null for a plain count. */
-  total: number | null;
-  /** The comparison basis in words, shown under the number. */
-  basis: string;
-  /** Honest state shown instead of the number while value is null. */
-  note?: string;
-  tone: "neutral" | "good" | "critical";
-  link: DashboardLink;
-};
+export type Phase = "before" | "during" | "after";
 
-export type Ratio = { value: number | null; total: number; link: DashboardLink };
-
-export type StationComparisonRow = {
+/** One station (or TOTAL) in the Beranda station table. */
+export type StationRow = {
   station: string;
-  /** Report group of the station; CGK and HLP share "CGK & HLP" (shown once per pair). */
+  /** Report group; CGK and HLP share "CGK & HLP". */
   group: string;
   sharedGroup: boolean;
-  assessed: Ratio;
-  score: { current: number | null; baseline: number | null; gain: number | null; link: DashboardLink };
-  pctSesuai: { value: number | null; link: DashboardLink };
-  bmiChecked: Ratio;
-  actionsDone: Ratio;
-  overdue: { value: number; link: DashboardLink };
+  /** Named staff (the base of Dinilai and Cek BMI, as in Laporan Mingguan). */
+  staffCount: number;
+  /** Staff with a score in the running week; null before the programme. */
+  assessed: number | null;
+  /** Staff measured in the current BMI period; null before the first check date. */
+  bmiChecked: number | null;
+  /** Staff whose latest weekly score puts them at Tidak Sesuai. */
+  tidakSesuai: number;
+  /** Action items of the station's report group flagged OVERDUE (TOTAL: all groups once). */
+  actionOverdue: number;
+  /** Same, due within 7 days. */
+  actionDueSoon: number;
+  /** Replacements with a replaced name and no effective date yet. */
+  replacementOpen: number;
+  /** Of those, past the replacement deadline. */
+  replacementOverdue: number;
+  /** All replacements with a replaced name. */
+  replacementTotal: number;
+  links: {
+    station: DashboardLink;
+    performa: DashboardLink;
+    rekap: DashboardLink;
+    bmi: DashboardLink;
+    tindakLanjut: DashboardLink;
+    penggantian: DashboardLink;
+  };
 };
 
-export type DashboardSummary = {
-  phase: "before" | "during" | "after";
+export type BerandaSummary = {
+  phase: Phase;
   /** Week the "this week" numbers refer to (the last week after the programme), or null before it. */
   week: number | null;
   /** Latest BMI period whose planned date has come, or null before the first check. */
   bmiPeriod: number | null;
-  kpis: Kpi[];
-  comparison: StationComparisonRow[];
+  /** One row per station in view, worst first. */
+  stations: StationRow[];
+  /** All stations in view together. */
+  total: StationRow;
+  /** Action progress per report group in view, then TOTAL. */
+  actions: ActionProgressRow[];
 };
 
-function currentBmiPeriod(data: TrackerData, today: string): number | null {
+export function phaseOf(s: Settings, today: IsoDate): Phase {
+  if (today < s.week1Start) return "before";
+  if (today > weekEnd(s.weeks, s)) return "after";
+  return "during";
+}
+
+/** Latest BMI period whose planned date is on or before today, or null. */
+export function currentBmiPeriod(s: Settings, today: IsoDate): number | null {
   let period: number | null = null;
-  for (let p = 1; p <= data.settings.bmiPeriods; p++) {
-    if (bmiCheckDate(p, data.settings) <= today) period = p;
+  for (let p = 1; p <= s.bmiPeriods; p++) {
+    if (bmiCheckDate(p, s) <= today) period = p;
   }
   return period;
 }
 
+function hasText(v: string | null | undefined): boolean {
+  return v != null && v.trim() !== "";
+}
+
+/** Replacement belongs to a station; rows without a station count for a group of one station. */
+function replacementIn(r: TrackerData["replacements"][number], station: string): boolean {
+  if (hasText(r.station)) return sameText(r.station, station);
+  return sameText(r.reportGroup, station);
+}
+
 /**
- * KPI strip (max 5 tiles) and per-station comparison for `stations` (the stations in
- * view: all for KPS / the owner, one for a station link). `data` must already be limited
- * to that scope (lib/workspace trackerData).
+ * Worst first: most exceptions (OVERDUE action items and replacements, Tidak Sesuai staff),
+ * then the largest share of this week's scores and checks still open, then station order.
  */
-export function dashboardSummary(data: TrackerData, today: string, stations: readonly string[]): DashboardSummary {
+export function worstFirst(rows: readonly StationRow[]): StationRow[] {
+  const openShare = (r: StationRow) => {
+    let due = 0;
+    let open = 0;
+    for (const done of [r.assessed, r.bmiChecked]) {
+      if (done === null) continue;
+      due += r.staffCount;
+      open += r.staffCount - done;
+    }
+    return due === 0 ? 0 : open / due;
+  };
+  return rows
+    .map((r, i) => ({ r, i, issues: r.actionOverdue + r.replacementOverdue + r.tidakSesuai, open: openShare(r) }))
+    .sort((a, b) => b.issues - a.issues || b.open - a.open || a.i - b.i)
+    .map(({ r }) => r);
+}
+
+/**
+ * Beranda numbers for `stations` (all for KPS / the owner, one for a station link).
+ * `data` must already be limited to that scope (lib/workspace trackerData).
+ */
+export function berandaSummary(data: TrackerData, today: IsoDate, stations: readonly string[]): BerandaSummary {
   const s = data.settings;
-  const lastDay = weekEnd(s.weeks, s);
-  const phase = today < s.week1Start ? "before" : today > lastDay ? "after" : "during";
+  const phase = phaseOf(s, today);
   const week = weekOfDate(today, s) ?? (phase === "after" ? s.weeks : null);
-  const bmiPeriod = currentBmiPeriod(data, today);
+  const bmiPeriod = currentBmiPeriod(s, today);
 
   const derived = staffDerived(data);
-  const groups = [...new Set(stations.map((code) => reportGroupOf(code) ?? code))];
-  const groupKeys = reportGroups(data.stations).filter((g) => groups.includes(g));
-  const actions = actionProgress(data.actionItems, s, today, groupKeys.length > 0 ? groupKeys : groups);
-  const actionTotal = actions.find((r) => r.key === TOTAL);
-  const weekly = week ? weeklyPerformance(data, week, derived) : [];
-  const perf = performanceByStation(data, derived);
-  const bmi = bmiPeriod ? bmiPeriodByStation(data, bmiPeriod, derived) : [];
-  const staffTotal = data.staff.length;
+  const inView = [...new Set(stations.map((code) => reportGroupOf(code) ?? code))];
+  const groupKeys = reportGroups(data.stations).filter((g) => inView.includes(g));
+  const actions = actionProgress(data.actionItems, s, today, groupKeys.length > 0 ? groupKeys : inView);
+  const weekly = week === null ? [] : weeklyPerformance(data, week, derived);
+  const bmi = bmiPeriod === null ? [] : bmiPeriodByStation(data, bmiPeriod, derived);
+  const timeliness = data.replacements
+    .filter((r) => hasText(r.replacedName))
+    .map((r) => ({ r, t: replacementTimeliness(r, s, today) }));
 
-  const withReplaced = data.replacements.filter((r) => r.replacedName && r.replacedName.trim() !== "");
-  const timeliness = withReplaced.map((r) => replacementTimeliness(r, s, today));
-  const onTime = timeliness.filter((t) => t === "Tepat waktu").length;
-  const lateOrOverdue = timeliness.filter((t) => t === "OVERDUE" || (t ?? "").startsWith("Lewat")).length;
+  const row = (key: string): StationRow => {
+    const all = key === TOTAL;
+    const station = all ? null : key;
+    const group = all ? TOTAL : (reportGroupOf(key) ?? key);
+    const a = actions.find((r) => r.key === group);
+    const repl = all ? timeliness : timeliness.filter(({ r }) => replacementIn(r, key));
+    const open = repl.filter(({ t }) => t === "OVERDUE" || t === "Menunggu");
+    const staff = derived.filter((d) => hasText(d.staff.name) && (all || sameText(d.staff.station, key)));
+    const q = (extra: Record<string, string | number | null> = {}) => ({ stasiun: station, ...extra });
+    return {
+      station: key,
+      group,
+      sharedGroup: !all && group !== key,
+      staffCount: staff.length,
+      assessed: week === null ? null : (weekly.find((r) => r.key === key)?.assessed ?? 0),
+      bmiChecked: bmiPeriod === null ? null : (bmi.find((r) => r.key === key)?.checked ?? 0),
+      tidakSesuai: staff.filter((d) => d.rekap?.currentStatus === "Tidak Sesuai").length,
+      actionOverdue: a?.overdue ?? 0,
+      actionDueSoon: a?.dueSoon ?? 0,
+      replacementOpen: open.length,
+      replacementOverdue: open.filter(({ t }) => t === "OVERDUE").length,
+      replacementTotal: repl.length,
+      links: {
+        station: { sheet: "dashboard", query: q() },
+        performa: { sheet: "performa", query: q({ minggu: week ?? 1 }) },
+        rekap: { sheet: "performa", query: q({ tab: "rekap" }) },
+        bmi: { sheet: "bmi", query: q({ periode: bmiPeriod ?? 1 }) },
+        tindakLanjut: { sheet: "tindakLanjut", query: { laporan: all ? null : group } },
+        penggantian: { sheet: "penggantian", query: q() },
+      },
+    };
+  };
 
-  const weeklyTotal = weekly.find((r) => r.key === TOTAL);
-  const bmiTotal = bmi.find((r) => r.key === TOTAL);
-  const overdueCount = actionTotal?.overdue ?? 0;
+  return {
+    phase,
+    week,
+    bmiPeriod,
+    stations: worstFirst(stations.map(row)),
+    total: row(TOTAL),
+    actions,
+  };
+}
 
-  const kpis: Kpi[] = [
+// ---------------------------------------------------------------------------
+// To-do list (station link, or KPS looking at one station)
+// ---------------------------------------------------------------------------
+
+export type TodoState = "todo" | "done" | "later";
+
+export type TodoItem = {
+  key: "penilaian" | "bmi" | "tindak-lanjut" | "penggantian" | "temuan" | "lp";
+  title: string;
+  /** Counts in words: "2 dari 12 SDM belum dinilai". */
+  detail: string;
+  state: TodoState;
+  /** Exception count shown as a critical label (OVERDUE); 0 otherwise. */
+  overdue: number;
+  /** Button label, naming the object. */
+  action: string;
+  link: DashboardLink;
+};
+
+/**
+ * This week's work for one station row. Before week 1 the list says what to prepare.
+ * `findingsWritten`: the station's findings for the running week exist.
+ * `genderMissing`: staff without L/P (only listed while preparing).
+ */
+export function stationTodo(
+  summary: Pick<BerandaSummary, "phase" | "week" | "bmiPeriod">,
+  row: StationRow,
+  s: Settings,
+  findingsWritten: boolean,
+  genderMissing = 0,
+): TodoItem[] {
+  const station = row.station === TOTAL ? null : row.station;
+  const q = (extra: Record<string, string | number | null> = {}) => ({ stasiun: station, ...extra });
+
+  const actionsOpen = row.actionOverdue + row.actionDueSoon;
+  const tindakLanjut: TodoItem = {
+    key: "tindak-lanjut",
+    title: `Tindak lanjut laporan ${row.group}`,
+    detail:
+      row.actionDueSoon > 0
+        ? `${row.actionDueSoon} jatuh tempo ≤ 7 hari`
+        : row.actionOverdue > 0
+          ? "Lewat batas waktu"
+          : "Tidak ada yang OVERDUE atau jatuh tempo ≤ 7 hari",
+    state: actionsOpen > 0 ? "todo" : "done",
+    overdue: row.actionOverdue,
+    action: "Perbarui tindak lanjut",
+    link: row.links.tindakLanjut,
+  };
+
+  const penggantian: TodoItem = {
+    key: "penggantian",
+    title: "Penggantian belum efektif",
+    detail:
+      row.replacementTotal === 0
+        ? "Tidak ada SDM yang perlu diganti"
+        : row.replacementOpen === 0
+          ? `Semua ${row.replacementTotal} penggantian sudah efektif`
+          : `${row.replacementOpen} dari ${row.replacementTotal} · batas ${formatTanggal(s.replacementDeadline)}`,
+    state: row.replacementOpen > 0 ? "todo" : "done",
+    overdue: row.replacementOverdue,
+    action: "Buka penggantian",
+    link: row.links.penggantian,
+  };
+
+  if (summary.phase === "before" || summary.week === null) {
+    const items: TodoItem[] = [];
+    if (genderMissing > 0) {
+      items.push({
+        key: "lp",
+        title: "L/P di Data SDM",
+        detail: `${genderMissing} dari ${row.staffCount} SDM belum diisi`,
+        state: "todo",
+        overdue: 0,
+        action: "Lengkapi L/P",
+        link: { sheet: "sdm", query: q({ cek: "lp-kosong" }) },
+      });
+    }
+    items.push(tindakLanjut, penggantian);
+    items.push({
+      key: "penilaian",
+      title: "Penilaian Minggu ke-1",
+      detail: `Mulai ${formatHariTanggal(s.week1Start)}`,
+      state: "later",
+      overdue: 0,
+      action: "Buka penilaian",
+      link: { sheet: "performa", query: q({ minggu: 1 }) },
+    });
+    items.push({
+      key: "bmi",
+      title: "Cek BMI periode 1",
+      detail: `Mulai ${formatHariTanggal(bmiCheckDate(1, s))}`,
+      state: "later",
+      overdue: 0,
+      action: "Buka cek BMI",
+      link: { sheet: "bmi", query: q({ periode: 1 }) },
+    });
+    return items;
+  }
+
+  const week = summary.week;
+  const assessed = row.assessed ?? 0;
+  const items: TodoItem[] = [
     {
-      key: "tl-selesai",
-      label: "Tindak Lanjut selesai",
-      value: actionTotal?.selesai ?? 0,
-      total: actionTotal?.total ?? 0,
-      basis: "butir berstatus Selesai dari semua butir tindak lanjut",
-      tone: actionTotal && actionTotal.total > 0 && actionTotal.selesai === actionTotal.total ? "good" : "neutral",
-      link: { sheet: "tindakLanjut" },
+      key: "penilaian",
+      title: `Penilaian Minggu ke-${week}`,
+      detail:
+        assessed >= row.staffCount
+          ? `Semua ${row.staffCount} SDM sudah dinilai`
+          : `${row.staffCount - assessed} dari ${row.staffCount} SDM belum dinilai`,
+      state: assessed >= row.staffCount ? "done" : "todo",
+      overdue: 0,
+      action: "Isi penilaian",
+      link: row.links.performa,
     },
-    {
-      key: "tl-overdue",
-      label: "OVERDUE",
-      value: overdueCount,
-      total: null,
-      basis: "butir lewat batas waktu dan belum Selesai",
-      tone: overdueCount > 0 ? "critical" : "neutral",
-      link: { sheet: "tindakLanjut" },
-    },
-    week
-      ? {
-          key: "dinilai",
-          label: phase === "after" ? `SDM dinilai Minggu ke-${week}` : "SDM dinilai minggu ini",
-          value: weeklyTotal?.assessed ?? 0,
-          total: weeklyTotal?.staffCount ?? staffTotal,
-          basis: `SDM yang sudah punya nilai Minggu ke-${week}`,
-          tone: "neutral",
-          link: { sheet: "performa", query: { minggu: week } },
-        }
-      : {
-          key: "dinilai",
-          label: "SDM dinilai minggu ini",
-          value: null,
-          total: staffTotal,
-          basis: `${staffTotal} SDM akan dinilai tiap minggu`,
-          note: `Penilaian mulai Minggu ke-1, ${formatHariTanggal(s.week1Start)}.`,
-          tone: "neutral",
-          link: { sheet: "performa", query: { minggu: 1 } },
-        },
-    bmiPeriod
-      ? {
-          key: "bmi",
-          label: `Cek BMI periode ${bmiPeriod}`,
-          value: bmiTotal?.checked ?? 0,
-          total: bmiTotal?.staffCount ?? staffTotal,
-          basis: `SDM yang sudah dicek, jadwal ${formatTanggal(bmiCheckDate(bmiPeriod, s))}`,
-          tone: "neutral",
-          link: { sheet: "bmi", query: { periode: bmiPeriod } },
-        }
-      : {
-          key: "bmi",
-          label: "Cek BMI periode ini",
-          value: null,
-          total: staffTotal,
-          basis: `${s.bmiPeriods} kali cek, tiap ${s.bmiIntervalDays} hari`,
-          note: `Cek pertama ${formatHariTanggal(bmiCheckDate(1, s))}.`,
-          tone: "neutral",
-          link: { sheet: "bmi", query: { periode: 1 } },
-        },
-    withReplaced.length > 0
-      ? {
-          key: "penggantian",
-          label: "Penggantian tepat waktu",
-          value: onTime,
-          total: withReplaced.length,
-          basis: `efektif paling lambat ${formatTanggal(s.replacementDeadline)}`,
-          tone: lateOrOverdue > 0 ? "critical" : "neutral",
-          link: { sheet: "penggantian" },
-        }
-      : {
-          key: "penggantian",
-          label: "Penggantian tepat waktu",
-          value: null,
-          total: 0,
-          basis: `batas ${formatTanggal(s.replacementDeadline)}`,
-          note: "Belum ada SDM yang perlu diganti.",
-          tone: "neutral",
-          link: { sheet: "penggantian" },
-        },
   ];
 
-  const comparison: StationComparisonRow[] = stations.map((station) => {
-    const group = reportGroupOf(station) ?? station;
-    const w = weekly.find((r) => r.key === station);
-    const p = perf.find((r) => r.key === station);
-    const b = bmi.find((r) => r.key === station);
-    const a = actions.find((r) => r.key === group);
-    const staffCount = p?.staffCount ?? data.staff.filter((st) => st.station === station).length;
-    return {
-      station,
-      group,
-      sharedGroup: group !== station,
-      assessed: {
-        value: week ? (w?.assessed ?? 0) : null,
-        total: w?.staffCount ?? staffCount,
-        link: { sheet: "performa", query: { stasiun: station, minggu: week ?? 1 } },
-      },
-      score: {
-        current: p?.currentAvg ?? null,
-        baseline: p?.baselineAvg ?? null,
-        gain: p?.gain ?? null,
-        link: { sheet: "performa", query: { stasiun: station, tab: "rekap" } },
-      },
-      pctSesuai: {
-        // No current scores yet: a percentage of nobody is not 0 %.
-        value: p && p.currentAvg !== null ? p.pctCurrentSesuai : null,
-        link: { sheet: "performa", query: { stasiun: station, tab: "rekap" } },
-      },
-      bmiChecked: {
-        value: bmiPeriod ? (b?.checked ?? 0) : null,
-        total: b?.staffCount ?? staffCount,
-        link: { sheet: "bmi", query: { stasiun: station, periode: bmiPeriod ?? 1 } },
-      },
-      actionsDone: {
-        value: a?.selesai ?? 0,
-        total: a?.total ?? 0,
-        link: { sheet: "tindakLanjut", query: { stasiun: station } },
-      },
-      overdue: { value: a?.overdue ?? 0, link: { sheet: "tindakLanjut", query: { stasiun: station } } },
-    };
-  });
+  if (summary.bmiPeriod === null || row.bmiChecked === null) {
+    items.push({
+      key: "bmi",
+      title: "Cek BMI periode 1",
+      detail: `Mulai ${formatHariTanggal(bmiCheckDate(1, s))}`,
+      state: "later",
+      overdue: 0,
+      action: "Buka cek BMI",
+      link: { sheet: "bmi", query: q({ periode: 1 }) },
+    });
+  } else {
+    const done = row.bmiChecked >= row.staffCount;
+    items.push({
+      key: "bmi",
+      title: `Cek BMI periode ${summary.bmiPeriod}`,
+      detail: done
+        ? `Semua ${row.staffCount} SDM sudah dicek`
+        : `${row.staffCount - row.bmiChecked} dari ${row.staffCount} SDM belum dicek`,
+      state: done ? "done" : "todo",
+      overdue: 0,
+      action: "Catat cek BMI",
+      link: row.links.bmi,
+    });
+  }
 
-  return { phase, week, bmiPeriod, kpis, comparison };
+  items.push(tindakLanjut, penggantian, {
+    key: "temuan",
+    title: `Temuan Minggu ke-${week}`,
+    detail: findingsWritten ? "Sudah ditulis" : "Belum ditulis",
+    state: findingsWritten ? "done" : "todo",
+    overdue: 0,
+    action: "Tulis temuan",
+    link: { sheet: "laporan", query: q({ minggu: week }) },
+  });
+  return items;
 }

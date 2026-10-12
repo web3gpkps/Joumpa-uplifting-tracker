@@ -36,9 +36,9 @@ type ActionItemDialogProps = {
 };
 
 /**
- * Update dialog for one Tindak Lanjut item. Every link edits progress (Status, % progres,
- * Tgl update, Realisasi / Bukti); the KPS link also edits Catatan KPS and the item's
- * definition, on a second tab. Station links see those fields read-only.
+ * "Perbarui progres" for one item. Every link edits Status, % progres, Tgl update and
+ * Realisasi / Bukti; KPS and the owner also edit Catatan KPS and the definition on a
+ * second tab. Station links see Catatan KPS read-only.
  */
 export function ActionItemDialog({ accessKey, isKps, today, settings, item, onClose, onSaved }: ActionItemDialogProps) {
   const [busy, setBusy] = useState(false);
@@ -52,8 +52,8 @@ export function ActionItemDialog({ accessKey, isKps, today, settings, item, onCl
       }}
       dismissible={!busy}
       size="md"
-      title={item ? `Perbarui ${item.code}` : "Perbarui tindak lanjut"}
-      description={item?.area ?? undefined}
+      title={item ? `Perbarui progres ${item.code}` : "Perbarui progres"}
+      description={item ? [item.reportGroup, item.area].filter(Boolean).join(" · ") : undefined}
     >
       {item ? (
         // Keyed by code: opening another item starts from that item's saved values.
@@ -92,7 +92,7 @@ function DialogBody({ accessKey, isKps, today, settings, item, onBusyChange, onS
             { id: "progres", label: "Progres", panel: progressForm },
             {
               id: "definisi",
-              label: "Catatan KPS & definisi",
+              label: "Catatan KPS dan definisi",
               panel: (
                 <DefinitionForm
                   accessKey={accessKey}
@@ -113,35 +113,35 @@ function DialogBody({ accessKey, isKps, today, settings, item, onBusyChange, onS
   );
 }
 
+function Entry({ label, value, wide = true }: { label: string; value: string | null; wide?: boolean }) {
+  return (
+    <div className={wide ? "sm:col-span-2" : undefined}>
+      <dt className="text-xs text-ink-muted">{label}</dt>
+      <dd className="mt-0.5 whitespace-pre-line text-ink [overflow-wrap:anywhere]">
+        {value ?? <span className="text-ink-muted">–</span>}
+      </dd>
+    </div>
+  );
+}
+
+/** The context above the forms. */
 function ItemSummary({ item, showKpsNotes }: { item: ActionView; showKpsNotes: boolean }) {
   return (
-    <dl className="grid gap-3 rounded-control border border-line bg-bg p-3 sm:grid-cols-2">
-      <div className="sm:col-span-2">
-        <dt className="section-label">Tindakan</dt>
-        <dd className="mt-0.5 text-ink">{item.action ?? "Belum diisi"}</dd>
-      </div>
-      <div className="sm:col-span-2">
-        <dt className="section-label">Target / Indikator</dt>
-        <dd className="mt-0.5 text-ink">{item.target ?? "Belum diisi"}</dd>
-      </div>
+    <dl className="grid gap-3 rounded-control border border-line bg-surface-sunken p-3 text-sm sm:grid-cols-2">
+      <Entry label="Tindakan" value={item.action} />
+      <Entry label="Target / Indikator" value={item.target} />
       <div>
-        <dt className="section-label">Batas waktu</dt>
+        <dt className="text-xs text-ink-muted">Batas waktu</dt>
         <dd className="mt-0.5 flex flex-wrap items-center gap-2">
-          <span className="tabular-nums">{item.dueLabel ?? "Belum ditentukan"}</span>
-          <StatusChip label={item.flag} emptyLabel="Tanpa batas waktu" />
+          <span className="tabular">{item.dueLabel ?? "–"}</span>
+          {item.flag ? <StatusChip label={item.flag} /> : null}
         </dd>
-        <dd className="text-xs text-ink-muted">Sisa hari: {describeDaysLeft(item.daysLeft)}</dd>
+        {item.daysLeft !== null ? (
+          <dd className="text-xs text-ink-muted">{describeDaysLeft(item.daysLeft)}</dd>
+        ) : null}
       </div>
-      <div>
-        <dt className="section-label">PIC</dt>
-        <dd className="mt-0.5 text-ink">{item.pic ?? "Belum diisi"}</dd>
-      </div>
-      {showKpsNotes ? (
-        <div className="sm:col-span-2">
-          <dt className="section-label">Catatan KPS (hanya diubah lewat tautan KPS)</dt>
-          <dd className="mt-0.5 whitespace-pre-line text-ink">{item.kpsNotes ?? "Belum ada catatan"}</dd>
-        </div>
-      ) : null}
+      <Entry label="PIC" value={item.pic} wide={false} />
+      {showKpsNotes && item.kpsNotes ? <Entry label="Catatan KPS" value={item.kpsNotes} /> : null}
       <div className="sm:col-span-2">
         <dt className="sr-only">Perubahan terakhir</dt>
         <dd className="text-xs text-ink-muted">{item.changedLabel}</dd>
@@ -220,21 +220,12 @@ function ProgressForm({ accessKey, today, item, onBusyChange, onSaved }: FormPro
             ))}
           </Select>
         </Field>
-        <Field
-          label="Tgl update"
-          help="Tanggal pembaruan ini. Bawaan: hari ini."
-          error={errors.updatedOn}
-        >
+        <Field label="Tgl update" error={errors.updatedOn}>
           <Input type="date" value={updatedOn} onChange={(e) => setUpdatedOn(e.target.value)} />
         </Field>
       </div>
 
-      <Field
-        label="% Progres"
-        help="Geser, atau ketik bilangan bulat 0 sampai 100."
-        error={errors.progress}
-        required
-      >
+      <Field label="% Progres" help="0 sampai 100" error={errors.progress} required>
         <NumberInput
           value={progress}
           onChange={(e) => setProgress(e.target.value)}
@@ -253,12 +244,13 @@ function ProgressForm({ accessKey, today, item, onBusyChange, onSaved }: FormPro
         className="-mt-2 h-11 w-full cursor-pointer accent-brand sm:h-8"
       />
 
-      <Field
-        label="Realisasi / Bukti"
-        help="Tulis bukti yang bisa dicek: daftar hadir, checklist, nomor dokumen, atau tautan berkas."
-        error={errors.evidence}
-      >
-        <Textarea rows={4} value={evidence} onChange={(e) => setEvidence(e.target.value)} />
+      <Field label="Realisasi / Bukti" error={errors.evidence}>
+        <Textarea
+          rows={4}
+          value={evidence}
+          placeholder="Daftar hadir, checklist, nomor dokumen, atau tautan berkas"
+          onChange={(e) => setEvidence(e.target.value)}
+        />
       </Field>
 
       <DialogActions>
@@ -271,7 +263,7 @@ function ProgressForm({ accessKey, today, item, onBusyChange, onSaved }: FormPro
   );
 }
 
-// Catatan KPS + definition (KPS link only)
+// Catatan KPS + definition (KPS and the owner)
 
 function DefinitionForm({ accessKey, today, item, settings, onBusyChange, onSaved }: FormProps & { settings: Settings }) {
   const [values, setValues] = useState<Omit<DefinitionInput, "code">>({
@@ -303,7 +295,7 @@ function DefinitionForm({ accessKey, today, item, settings, onBusyChange, onSave
     ? rule
       ? `${DUE_RULE_LABEL[rule]} (${formatTanggal(preview)})`
       : formatTanggal(preview)
-    : "Belum ditentukan";
+    : "–";
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -361,13 +353,9 @@ function DefinitionForm({ accessKey, today, item, settings, onBusyChange, onSave
         <Input value={values.schedule} onChange={(e) => set("schedule")(e.target.value)} />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Aturan batas waktu"
-          help="Batas waktu bergulir dihitung ulang setiap hari."
-          error={errors.dueRule}
-        >
+        <Field label="Aturan batas waktu" error={errors.dueRule}>
           <Select value={values.dueRule} onChange={(e) => set("dueRule")(e.target.value)}>
-            <option value="">Tetap (pakai batas waktu tetap)</option>
+            <option value="">Tetap</option>
             {DUE_RULES.map((r) => (
               <option key={r} value={r}>
                 {DUE_RULE_OPTION[r]}
@@ -377,14 +365,14 @@ function DefinitionForm({ accessKey, today, item, settings, onBusyChange, onSave
         </Field>
         <Field
           label="Batas waktu tetap"
-          help={rule ? "Tidak dipakai selama aturan bergulir dipilih." : "Kosongkan jika belum ada batas waktu."}
+          help={rule ? "Tidak dipakai selama ada aturan" : undefined}
           error={errors.dueDate}
         >
           <Input type="date" value={values.dueDate} onChange={(e) => set("dueDate")(e.target.value)} />
         </Field>
       </div>
       <p className="text-sm text-ink-muted" aria-live="polite">
-        Batas waktu yang akan tampil: <span className="font-semibold text-ink tabular-nums">{previewText}</span>
+        Batas waktu: <span className="font-semibold text-ink tabular-nums">{previewText}</span>
       </p>
 
       <DialogActions>

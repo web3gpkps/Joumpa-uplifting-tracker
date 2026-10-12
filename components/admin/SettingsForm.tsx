@@ -79,7 +79,7 @@ export function SettingsForm({ initial, genderMissing }: SettingsFormProps) {
           setSave({ status: "error", message: result.message });
         }
       } catch {
-        setSave({ status: "error", message: "Server tidak menjawab. Periksa koneksi, lalu simpan lagi." });
+        setSave({ status: "error", message: "Server tidak menjawab. Coba lagi." });
       }
     });
   }
@@ -113,13 +113,10 @@ export function SettingsForm({ initial, genderMissing }: SettingsFormProps) {
         <Panel key={section.id} id={`param-${section.id}`} title={section.title}>
           <div className="flex flex-col gap-4">
             {section.id === "tinggi-badan" && heightsMissing ? (
-              <p role="note" className="text-sm text-ink">
-                <span className="rounded-status bg-warning-tint px-1.5 py-0.5 text-xs font-semibold text-warning">
-                  Belum lengkap
-                </span>{" "}
-                Syarat tinggi belum dinilai sampai kedua tinggi minimal diisi.
+              <p role="note" className="text-sm font-semibold text-warning">
+                Syarat tinggi belum dinilai
                 {genderMissing && genderMissing.missing > 0
-                  ? ` ${genderMissing.missing} dari ${genderMissing.total} SDM belum punya L/P.`
+                  ? ` · ${genderMissing.missing} dari ${genderMissing.total} SDM belum punya L/P`
                   : ""}
               </p>
             ) : null}
@@ -140,29 +137,25 @@ export function SettingsForm({ initial, genderMissing }: SettingsFormProps) {
             </div>
             {section.id === "jadwal" && schedule ? (
               <p className="text-sm text-ink-muted">
-                Dengan nilai ini: Minggu ke-1 mulai {formatTanggal(weekStart(1, schedule))}, Minggu ke-
-                {schedule.weeks} berakhir {formatTanggal(weekEnd(schedule.weeks, schedule))}.
+                Minggu ke-1 mulai {formatTanggal(weekStart(1, schedule))} · Minggu ke-{schedule.weeks} berakhir{" "}
+                {formatTanggal(weekEnd(schedule.weeks, schedule))}
               </p>
             ) : null}
             {section.id === "cek-bmi" && schedule ? (
               <p className="text-sm text-ink-muted">
-                Jadwal cek dengan nilai ini:{" "}
+                Jadwal cek:{" "}
                 {Array.from({ length: schedule.bmiPeriods }, (_, i) => bmiCheckDate(i + 1, schedule))
                   .map((d, i, all) => (i === all.length - 1 ? formatTanggal(d) : formatTanggalPendek(d)))
                   .join(", ")}
-                .
               </p>
             ) : null}
           </div>
         </Panel>
       ))}
 
-      <div className="flex flex-col gap-3 rounded-panel border border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-panel border border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="flex flex-col gap-1">
-          <p className="text-sm text-ink">
-            {dirty ? "Ada perubahan yang belum disimpan." : "Belum ada perubahan."} Perubahan langsung dipakai
-            semua tautan stasiun.
-          </p>
+          <p className="text-sm text-ink">{dirty ? "Ada perubahan belum disimpan" : "Tidak ada perubahan"}</p>
           <SaveStatus state={save} />
         </div>
         <div className="flex flex-col-reverse gap-2 sm:flex-row">
@@ -175,7 +168,7 @@ export function SettingsForm({ initial, genderMissing }: SettingsFormProps) {
               setSave({ status: "idle" });
             }}
           >
-            Kembalikan nilai tersimpan
+            Batalkan perubahan
           </Button>
           <Button type="submit" loading={pending} loadingText="Menyimpan parameter…">
             Simpan parameter

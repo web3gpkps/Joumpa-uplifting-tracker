@@ -1,15 +1,18 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import type { Settings } from "@/lib/rules";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { consistency, criteriaStatus, practiceAvg, type Settings } from "@/lib/rules";
 import { formatScore } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { EmptyState } from "@/components/ui/States";
+import { FilterBar } from "@/components/ui/Toolbar";
 import { DataGrid, type CellValue, type GridColumn, type SaveRowResult } from "@/components/grid/DataGrid";
 import { ASPECTS } from "@/components/performa/format";
 import { StaffDialog } from "./StaffDialog";
 import { StaffCards } from "./StaffCards";
 import { DeleteStaffDialog } from "./DeleteStaffDialog";
+import { REASON_LABELS, SCORE_FIELDS, reasonsFor, staffColumnKeys } from "./rows";
 import {
   ASSIGNMENT_STATUSES,
   REPORT_CONCLUSIONS,
@@ -22,6 +25,8 @@ import {
 type StaffGridProps = {
   caption: string;
   rows: SdmRow[];
+  /** Station and "Perlu diperiksa" selects (server-rendered). */
+  toolbar: ReactNode;
   emptyTitle: string;
   emptyHint: string;
   accessKey: string;
@@ -37,31 +42,43 @@ type StaffGridProps = {
 };
 
 /** Training-baseline fields: KPS links and the owner only (share_kps_save_staff_baseline). */
-const BASELINE = ["pre_test", "post_test", "score_a", "score_b", "score_c", "score_d", "score_e", "score_f", "report_conclusion"];
-const SCORE_KEYS = ["score_a", "score_b", "score_c", "score_d", "score_e", "score_f"] as const;
+const BASELINE = ["pre_test", "post_test", ...SCORE_FIELDS, "report_conclusion"];
+
+const MORE_GROUP = "Lainnya";
 
 const rowKey = (r: SdmRow) => r.code;
 const rowLabel = (r: SdmRow) => `${r.code}, ${r.name}`;
-const SEARCH = { placeholder: "Nama atau ID", text: (r: SdmRow) => `${r.code} ${r.name} ${r.nipp ?? ""}` };
+const SEARCH = { placeholder: "Nama, ID atau NIPP", text: (r: SdmRow) => `${r.code} ${r.name} ${r.nipp ?? ""}` };
+
+function num(value: CellValue): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function text(value: CellValue): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+}
 
 function chip(value: CellValue) {
-  return value ? <StatusChip label={String(value)} /> : null;
+  const label = text(value);
+  return label ? <StatusChip label={label} /> : null;
 }
 
 /**
- * Master SDM as a spreadsheet (docs/UX.md §2): profile cells for every link, training
- * baseline cells for KPS and the owner, computed 6.2 status and consistency read-only.
- * Each row saves itself through saveStaff. "Ubah" opens the full form. Under 900 px the
- * existing table with its edit dialog is shown instead. Client component.
+ * Data SDM as an entry grid. Core columns: ID, Nama (with the "Periksa" marker), Stasiun
+ * (KPS), L/P, NIPP, Rata-rata praktik, Kesimpulan, Status penugasan. "Kolom lainnya" adds
+ * pre/post-test, the A to F training baseline, the criteria status, the consistency check
+ * and Catatan. Training fields are edited by KPS and the owner only. Computed cells follow
+ * the row live (lib/rules). Each row saves itself; "Ubah" opens the full form. Under 900 px
+ * a card list is shown. Client component.
  */
 export function StaffGrid(props: StaffGridProps) {
-  const { rows, isKps, accessKey, saveAction } = props;
+  const { rows, isKps, accessKey, saveAction, settings, canDelete } = props;
   const [editing, setEditing] = useState<SdmRow | null>(null);
   const [openCount, setOpenCount] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [deleting, setDeleting] = useState<SdmRow | null>(null);
-  const { canDelete } = props;
+  const [more, setMore] = useState(false);
 
   const openEdit = useCallback((row: SdmRow) => {
     setEditing(row);
@@ -71,19 +88,58 @@ export function StaffGrid(props: StaffGridProps) {
 
   const columns = useMemo<GridColumn<SdmRow>[]>(() => {
     const kpsOnly = () => isKps;
-    return [
-      { key: "code", header: "ID", width: 84, editor: "readonly", frozen: true },
-      { key: "name", header: "Nama", width: 200, editor: "text", required: true, maxLength: 200, frozen: true },
-      { key: "station", header: "Stasiun", width: 76, editor: "readonly" },
-      {
+    // While the training columns are hidden the grid cannot read them: use the stored values.
+    const avg = (row: SdmRow, value: (key: string) => CellValue) =>
+      more ? practiceAvg(SCORE_FIELDS.map((k) => num(value(k)))) : row.practiceAvg;
+    const postTest = (row: SdmRow, value: (key: string) => CellValue) => (more ? num(value("post_test")) : row.postTest);
+    const status = (row: SdmRow, value: (key: string) => CellValue) =>
+      criteriaStatus(avg(row, value), postTest(row, value), settings);
+
+    const byKey: Record<string, GridColumn<SdmRow>> = {
+      code: { key: "code", header: "ID", width: 84, editor: "readonly", frozen: true },
+      name: {
+        key: "name",
+        header: "Nama",
+        width: 220,
+        editor: "text",
+        required: true,
+        maxLength: 200,
+        frozen: true,
+        render: (value, row) => {
+          const reasons = reasonsFor(row).map((r) => REASON_LABELS[r]);
+          if (reasons.length === 0) return value;
+          return (
+            <span className="flex items-center gap-1.5" title={`Perlu diperiksa: ${reasons.join(", ")}`}>
+              <span className="truncate">{value}</span>
+              <StatusChip label="Periksa" tone="warning" />
+              <span className="sr-only">: {reasons.join(", ")}</span>
+            </span>
+          );
+        },
+      },
+      station: {
+        key: "station",
+        header: "Stasiun",
+        width: 72,
+        editor: "readonly",
+        render: (value) => <span className="station-code">{value}</span>,
+      },
+      gender: {
+        key: "gender",
+        header: "L/P",
+        width: 60,
+        editor: "select",
+        options: [{ value: "L" }, { value: "P" }],
+      },
+      nipp: {
         key: "nipp",
         header: "NIPP",
-        width: 112,
+        width: 132,
         editor: "text",
         maxLength: 50,
         render: (value, row) =>
           row.duplicateNippWith.length > 0 ? (
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5" title={`Sama dengan ${row.duplicateNippWith.join(", ")}`}>
               <span className="tabular-nums">{value}</span>
               <StatusChip label="ganda" />
             </span>
@@ -91,37 +147,19 @@ export function StaffGrid(props: StaffGridProps) {
             <span className="tabular-nums">{value}</span>
           ),
       },
-      {
-        key: "gender",
-        header: "L/P",
-        width: 64,
-        editor: "select",
-        options: [{ value: "L" }, { value: "P" }],
-      },
-      { key: "pre_test", header: "Pre-test", width: 80, editor: "number", min: 0, max: 100, decimals: 2, get: (r) => r.preTest, editable: kpsOnly },
-      { key: "post_test", header: "Post-test", width: 84, editor: "number", min: 0, max: 100, decimals: 2, get: (r) => r.postTest, editable: kpsOnly },
-      ...ASPECTS.map((a, i): GridColumn<SdmRow> => ({
-        key: SCORE_KEYS[i],
-        header: a.letter,
-        label: `${a.letter} ${a.name}`,
-        group: "Nilai pelatihan A sampai F",
-        width: 44,
-        editor: "score",
-        get: (r) => r.scores[i],
-        editable: kpsOnly,
-      })),
-      {
+      practice_avg: {
         key: "practice_avg",
-        header: "Rata-rata",
-        width: 84,
+        header: "Rata-rata praktik",
+        width: 96,
         editor: "readonly",
         align: "end",
-        get: (r) => r.practiceAvg,
-        render: (value) => <span className="font-semibold">{formatScore(value as number | null)}</span>,
+        derive: avg,
+        render: (value) => <span className="font-semibold">{formatScore(num(value)) || "–"}</span>,
       },
-      {
+      report_conclusion: {
         key: "report_conclusion",
-        header: "Kesimpulan laporan",
+        header: "Kesimpulan",
+        label: "Kesimpulan laporan pelatihan",
         width: 168,
         editor: "select",
         options: REPORT_CONCLUSIONS.map((value) => ({ value })),
@@ -129,21 +167,76 @@ export function StaffGrid(props: StaffGridProps) {
         editable: kpsOnly,
         render: chip,
       },
-      { key: "criteria", header: "Status 6.2", width: 128, editor: "readonly", get: (r) => r.criteriaStatus, render: chip },
-      { key: "consistency", header: "Konsistensi", width: 140, editor: "readonly", get: (r) => r.consistency, render: chip },
-      {
+      assignment_status: {
         key: "assignment_status",
         header: "Status penugasan",
-        width: 156,
+        width: 160,
         editor: "select",
         required: true,
         options: ASSIGNMENT_STATUSES.map((value) => ({ value })),
         get: (r) => r.assignmentStatus,
         render: chip,
       },
-      { key: "notes", header: "Catatan", width: 220, editor: "longtext", maxLength: 4000 },
-    ];
-  }, [isKps]);
+      pre_test: {
+        key: "pre_test",
+        header: "Pre-test",
+        group: MORE_GROUP,
+        width: 84,
+        editor: "number",
+        min: 0,
+        max: 100,
+        decimals: 2,
+        get: (r) => r.preTest,
+        editable: kpsOnly,
+      },
+      post_test: {
+        key: "post_test",
+        header: "Post-test",
+        group: MORE_GROUP,
+        width: 84,
+        editor: "number",
+        min: 0,
+        max: 100,
+        decimals: 2,
+        get: (r) => r.postTest,
+        editable: kpsOnly,
+      },
+      criteria: {
+        key: "criteria",
+        header: "Status kriteria",
+        label: "Status menurut kriteria kelulusan",
+        group: MORE_GROUP,
+        width: 136,
+        editor: "readonly",
+        derive: status,
+        render: chip,
+      },
+      consistency: {
+        key: "consistency",
+        header: "Konsistensi",
+        label: "Kesimpulan dibanding status kriteria",
+        group: MORE_GROUP,
+        width: 148,
+        editor: "readonly",
+        derive: (row, value) => consistency(text(value("report_conclusion")), status(row, value)),
+        render: chip,
+      },
+      notes: { key: "notes", header: "Catatan", group: MORE_GROUP, width: 220, editor: "longtext", maxLength: 4000 },
+    };
+    ASPECTS.forEach((a, i) => {
+      byKey[SCORE_FIELDS[i]] = {
+        key: SCORE_FIELDS[i],
+        header: a.letter,
+        label: `${a.letter} ${a.name}, nilai pelatihan`,
+        group: "Nilai pelatihan (1 sampai 5)",
+        width: 44,
+        editor: "score",
+        get: (r) => r.scores[i],
+        editable: kpsOnly,
+      };
+    });
+    return staffColumnKeys({ isKps, more }).map((key) => byKey[key]);
+  }, [isKps, settings, more]);
 
   const rowActions = useMemo(
     () => ({
@@ -172,6 +265,7 @@ export function StaffGrid(props: StaffGridProps) {
 
   const onSaveRow = useCallback(
     async (_key: string, changes: Record<string, CellValue>, row: SdmRow): Promise<SaveRowResult> => {
+      // share_save_staff and the baseline RPC write every field: merge the changes into the row.
       const pick = <T,>(field: string, fallback: T): T => (field in changes ? (changes[field] as T) : fallback);
       const baselineChanged = BASELINE.some((field) => field in changes);
       const gender = pick<string | null>("gender", row.gender);
@@ -187,29 +281,27 @@ export function StaffGrid(props: StaffGridProps) {
           ? {
               preTest: pick<number | null>("pre_test", row.preTest),
               postTest: pick<number | null>("post_test", row.postTest),
-              scores: SCORE_KEYS.map((field, i) => pick<number | null>(field, row.scores[i])),
+              scores: SCORE_FIELDS.map((field, i) => pick<number | null>(field, row.scores[i])),
               reportConclusion: pick<string | null>("report_conclusion", row.reportConclusion),
             }
           : null,
       });
       if (result.ok) return { ok: true };
-      const text = result.saved
-        ? `Profil tersimpan, data pelatihan gagal: ${result.error.message}`
-        : result.error.message;
+      const message = result.saved ? `Profil tersimpan, data pelatihan gagal: ${result.error.message}` : result.error.message;
       return {
         ok: false,
-        message: text,
+        message,
         fieldErrors: result.error.field ? { [result.error.field]: result.error.message } : undefined,
       };
     },
     [accessKey, saveAction],
   );
 
-  const assessed = rows.filter((r) => r.practiceAvg !== null).length;
+  const count = <span className="tabular-nums">{rows.length} SDM</span>;
 
   return (
-    <div className="flex flex-col gap-3 px-4 pb-4">
-      <div role="status" aria-live="polite">
+    <div className="flex flex-col gap-3">
+      <div role="status" aria-live="polite" className="empty:hidden">
         {message ? <p className="text-sm font-semibold text-good">{message}</p> : null}
       </div>
       <DataGrid
@@ -220,24 +312,34 @@ export function StaffGrid(props: StaffGridProps) {
         rowLabel={rowLabel}
         onSaveRow={onSaveRow}
         search={SEARCH}
-        summary={`${rows.length} SDM · ${assessed} punya nilai pelatihan`}
+        toolbar={props.toolbar}
+        summary={count}
+        actions={
+          <Button size="sm" variant="secondary" aria-pressed={more} onClick={() => setMore((m) => !m)}>
+            {more ? "Sembunyikan kolom lainnya" : "Kolom lainnya"}
+          </Button>
+        }
         rowActions={rowActions}
         emptyState={
-          <>
-            <p className="text-sm font-semibold text-ink">{props.emptyTitle}</p>
-            <p className="mt-1 text-sm text-ink-muted">{props.emptyHint}</p>
-          </>
+          <EmptyState title={props.emptyTitle} layout="inline">
+            {props.emptyHint}
+          </EmptyState>
         }
         phone={
-          <StaffCards
-            rows={rows}
-            emptyTitle={props.emptyTitle}
-            emptyHint={props.emptyHint}
-            accessKey={accessKey}
-            saveGenderAction={props.saveGenderAction}
-            onEdit={openEdit}
-            onDelete={canDelete ? setDeleting : undefined}
-          />
+          <div className="flex flex-col gap-4">
+            <FilterBar label="Filter SDM" end={count}>
+              {props.toolbar}
+            </FilterBar>
+            <StaffCards
+              rows={rows}
+              emptyTitle={props.emptyTitle}
+              emptyHint={props.emptyHint}
+              accessKey={accessKey}
+              saveGenderAction={props.saveGenderAction}
+              onEdit={openEdit}
+              onDelete={canDelete ? setDeleting : undefined}
+            />
+          </div>
         }
       />
       <StaffDialog
@@ -249,7 +351,7 @@ export function StaffGrid(props: StaffGridProps) {
         isKps={isKps}
         ownStation={props.ownStation}
         stations={props.stations}
-        settings={props.settings}
+        settings={settings}
         saveAction={saveAction}
         onSaved={setMessage}
         onDelete={canDelete ? setDeleting : undefined}
