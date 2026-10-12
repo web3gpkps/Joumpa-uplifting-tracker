@@ -286,7 +286,7 @@ function ReplacementForm({ ctx, row, formId, pending, onSubmit, errors, setError
             <NumberInput decimal value={practiceAvg} onChange={(e) => setPracticeAvg(e.target.value)} />
           </Field>
         </div>
-        <dl className="flex flex-wrap gap-x-6 gap-y-2 rounded-control bg-paper px-3 py-2">
+        <dl className="flex flex-wrap gap-x-6 gap-y-2 rounded-control bg-bg px-3 py-2">
           <div className="flex flex-col gap-1">
             <dt className="section-label">Status kelulusan</dt>
             <dd>
@@ -473,7 +473,7 @@ export function ReplacementDeleteButton({ ctx, id, name }: { ctx: ReplacementCon
     <>
       <Button
         size="sm"
-        variant="quiet"
+        variant="ghost"
         tabIndex={-1}
         onClick={() => {
           setError(null);
@@ -542,7 +542,7 @@ export function ReplacementRowActions({ ctx, row }: { ctx: ReplacementContext; r
         <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
           Ubah
         </Button>
-        <Button variant="quiet" size="sm" onClick={() => setDeleteOpen(true)}>
+        <Button variant="ghost" size="sm" onClick={() => setDeleteOpen(true)}>
           Hapus
         </Button>
       </div>

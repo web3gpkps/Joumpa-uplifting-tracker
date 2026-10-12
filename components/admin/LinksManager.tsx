@@ -139,7 +139,7 @@ export function LinksManager({ links }: LinksManagerProps) {
               </h2>
               <p className="mt-1 text-sm text-ink">{fresh.note}</p>
             </div>
-            <Button variant="quiet" size="sm" onClick={() => setFresh(null)}>
+            <Button variant="ghost" size="sm" onClick={() => setFresh(null)}>
               Tutup
             </Button>
           </div>
@@ -160,7 +160,6 @@ export function LinksManager({ links }: LinksManagerProps) {
 
       <Panel
         title="Buat tautan"
-        description="Satu tautan per pemegang. Label menjelaskan siapa yang memegangnya, misalnya jabatan PIC."
       >
         <form onSubmit={submitCreate} noValidate className="flex flex-col gap-4">
           <div className="grid gap-4 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
@@ -184,7 +183,7 @@ export function LinksManager({ links }: LinksManagerProps) {
             </Button>
           </div>
           {formMessage ? (
-            <p role="alert" className="text-sm font-medium text-critical">
+            <p role="alert" className="text-sm font-semibold text-critical">
               {formMessage}
             </p>
           ) : null}
@@ -193,7 +192,6 @@ export function LinksManager({ links }: LinksManagerProps) {
 
       <Panel
         title="Tautan aktif"
-        description="Salin tautan untuk dikirim ulang. Ganti tautan jika tautan bocor atau pemegangnya berganti."
         padding="flush"
       >
         <DataTable caption="Tautan aktif" hideCaption minWidth="980px" stickyHeader={false}>
@@ -293,7 +291,6 @@ export function LinksManager({ links }: LinksManagerProps) {
 
       <Panel
         title="Tautan dicabut"
-        description="Riwayat tautan yang sudah tidak berlaku. Pemegangnya melihat layar Tautan tidak berlaku."
         padding="flush"
       >
         <DataTable caption="Tautan dicabut" hideCaption minWidth="760px" stickyHeader={false}>
@@ -377,7 +374,7 @@ export function LinksManager({ links }: LinksManagerProps) {
               </p>
             )}
             {confirmError ? (
-              <p role="alert" className="font-medium text-critical">
+              <p role="alert" className="font-semibold text-critical">
                 {confirmError}
               </p>
             ) : null}

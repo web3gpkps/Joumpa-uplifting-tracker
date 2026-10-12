@@ -22,11 +22,10 @@ export type FlagItem = {
  * data (lib/rules for Beda; NIPP and L/P from the staff rows). Each one filters the
  * table through a real link (?cek=...). Server component.
  */
-export function FlagSummary({ items, scopeName }: { items: FlagItem[]; scopeName: string }) {
+export function FlagSummary({ items }: { items: FlagItem[] }) {
   return (
     <Panel
       title="Perlu diperiksa"
-      description={`Data SDM ${scopeName} yang tidak cocok atau belum lengkap. Pilih salah satu untuk menyaring tabel.`}
       padding="flush"
     >
       <ul className="grid border-t border-line sm:grid-cols-2 xl:grid-cols-4">
@@ -34,7 +33,7 @@ export function FlagSummary({ items, scopeName }: { items: FlagItem[]; scopeName
           <li
             key={item.key}
             className={cx(
-              "flex flex-col gap-2 border-b border-line px-4 py-4 sm:px-6 xl:border-b-0 xl:border-r xl:last:border-r-0",
+              "flex flex-col gap-2 border-b border-line px-4 py-4 xl:border-b-0 xl:border-r xl:last:border-r-0",
               "sm:odd:border-r xl:odd:border-r",
               item.active && "bg-brand-tint",
             )}

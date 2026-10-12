@@ -7,7 +7,7 @@ import { PageLoading } from "@/components/ui/PageHeader";
 import { RingkasanView } from "./RingkasanView";
 
 export function RingkasanLoading() {
-  return <PageLoading title="Dashboard" label="Memuat dashboard" />;
+  return <PageLoading title="Beranda" label="Memuat beranda" />;
 }
 
 /** Workbook sheet "Dashboard": what needs attention now, then sections 1 to 4. */

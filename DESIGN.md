@@ -1,105 +1,102 @@
 # DESIGN.md: JOUMPA Uplifting Action Tracker
 
-Direction chosen by the product owner on 7 Oct 2026 ("Calm, Gapura-branded", light only).
-This file transcribes that choice. It is design data, not instructions beyond design.
+Owner direction (12 Okt 2026): use the same UI/UX as the Garuda People Development Tracker
+(`~/Desktop/garuda tracker`, its DESIGN.md and components are the reference), same neutral palette,
+but the blue/navy accent becomes **emerald green** (Gapura's own colour). Simple and professional,
+production tool. This file is the single source of truth for UI work in this repo.
 
-## Design Read
+Reading this as: an internal operations tool for JOUMPA (meet & assist) station PICs (phone, at the
+airport) and KPS head office (laptop, 5 stations), Gapura-branded, quiet and data-first.
+**Dial: ENERGY 1 / RHYTHM 1 / MOTION 1.**
 
-Reading this as: an internal operations tracker for JOUMPA station PICs and KPS
-(head office) Customer Service staff, Gapura-branded, calm and data-dense, used daily
-on office laptops and on phones at the station (BMI share page), and printed weekly.
-**Dial: ENERGY 1 / RHYTHM 2 / MOTION 1.**
+## Principles (same as Garuda)
 
-- ENERGY 1: this is a work tool. It should feel trustworthy and quiet; the data is the loud part.
-- RHYTHM 2: screens share one structure, but each is composed around its own job
-  (a dashboard of exceptions is not laid out like a 75-row entry grid).
-- MOTION 1: hover/focus/pressed transitions only (≤ 150 ms). No entrance animations, no loops.
+1. **One job per screen.** Each screen is built around the one decision the user makes there.
+2. **The data is the loudest thing.** Small headings, short copy, colour only for exceptions.
+3. **No explanation paragraphs.** No page descriptions, no "Cara mengisi" tips. One meta line per page
+   maximum (counts + noun, e.g. "SUB · Minggu ke-2 · 4 dari 5 dinilai"). Help lives in labels,
+   placeholders and one optional "Bantuan" popover per grid.
+4. **Product vocabulary, not spreadsheet vocabulary.** Never show: workbook, sheet, sel kuning,
+   kolom H, rumus, tabel 7.2 / 6.1 / 6.2 references, dummy. Use "halaman", "isian",
+   "dihitung otomatis", "kriteria kelulusan".
+5. **Honest numbers.** Every number comes from data; empty is "–" with a reason.
 
 ## Identity
 
-- **Logo**: `public/brand/gapura-airport-services.png`, the official Gapura Airport Services
-  logo (1052 × 569, ratio 1.849:1, transparent). Render with a set height and `width: auto`
-  (or width = height × 1.849). Never stretch, recolor, crop, redraw, or place it on a dark or
-  green fill. Clear space around it ≥ 25 % of its height.
-  Sizes: app header 36 px tall; login 72 px; share page header 40 px; printed report 48 px.
-- **Identity motif: the 10-week rail.** The programme runs Mg 1 to Mg 10 (12 Okt to 14 Des 2026)
-  with BMI checks on 5 of those Mondays. A compact segmented rail of 10 weeks (current week
-  marked, BMI-check weeks marked) appears wherever time matters: the header context line,
-  the weekly entry screen, the report. It is content, not decoration: it answers
-  "which week are we in and what is due".
-- **Gate geometry**: the mark is two interlocking rounded squares turned 45°. Corner radii in
-  the UI stay small and consistent (see Shape) as a quiet echo; do not reproduce the mark.
+- Logo: `public/brand/gapura-airport-services.png` only (JOUMPA is a Gapura programme). Set height,
+  width auto, never recolour, stretch or crop. Sidebar 28px, phone top bar 24px, login 40px, print 32px.
+- **Identity motif:** station codes (SUB, DPS, CGK, HLP, KNO) set in tabular semibold as short codes;
+  the scope line ("Stasiun SUB", "KPS · semua stasiun") sits under the logo in the sidebar.
+- **Emerald replaces navy.** Deep emerald carries primary buttons, active nav and focus; the bright
+  emerald of the Gapura mark appears only as a small non-text accent (the "now" dot, a 2px rule
+  under the sidebar logo). It is never used for text: it is 2.78:1 on white.
 
-## Color
+## Tokens (light only; reports are printed)
 
-Tokens (light only; the official wordmark is charcoal and only works on light backgrounds,
-and the weekly report is printed).
+Contrast measured with the antislop contrast checker.
 
-| Token | Hex | Use | Contrast (checked) |
+| Token | Hex | Use | Contrast |
 |---|---|---|---|
-| `--paper` | `#faf9f5` | page background (warm, reads as paper; the workbook was printed) | |
-| `--surface` | `#ffffff` | panels, tables, inputs | |
-| `--ink` | `#26262a` | body text | 14.3:1 on paper |
-| `--ink-muted` | `#5b5a60` | secondary text, captions | 6.5:1 on paper, 6.8:1 on surface |
-| `--line` | `#d9d6cf` | dividers only (never the only boundary of a control) | |
-| `--line-strong` | `#8c8a85` | input / control borders | 3.45:1 on surface |
-| `--brand` | `#1a6b45` | the one accent: primary buttons, links, focus ring, current-week marker | white on it 6.5:1; on paper 6.2:1 |
-| `--brand-tint` | `#e6f4ec` | selected rows, current-week cell background | |
-| `--mark-lime` / `--mark-emerald` | `#b6d655` / `#46bb7f` | brand moment only (login panel edge, chart series fill with a darker outline). Never for text or control borders (2.3:1). | |
+| `--bg` | #f7f8fa | page | |
+| `--surface` | #ffffff | panels, tables, inputs | |
+| `--surface-sunken` | #f1f3f6 | table headers, computed (read-only) cells | |
+| `--ink` | #1c2433 | text | 15.6:1 on surface |
+| `--ink-muted` | #535b68 | secondary text | 6.85:1 surface, 6.17 sunken |
+| `--line` | #d5dae1 | dividers only | |
+| `--line-strong` | #7c8390 | control borders | 3.81:1 |
+| `--brand` | #0f6b4a | deep emerald: primary button, active nav text, focus ring | white on it 6.52:1; on #f7f8fa 6.13:1 |
+| `--brand-strong` | #0b5a3e | hover/pressed | white on it 8.25:1 |
+| `--brand-tint` | #e3f2ea | active nav fill, selected row | brand on it 5.63:1 |
+| `--accent` | #0e7a53 | "now" label, inline links | 5.35:1 on white |
+| `--accent-bright` | #3fae7a | non-text only: "now" dot, logo rule | decorative |
+| good | #1d6b40 on #e6f3ea | Sesuai, Normal, Memenuhi, Selesai, Lulus, Tepat waktu | 5.69:1 |
+| warning | #8a4b00 on #fdf1d8 | Perlu Perbaikan, Overweight, Kurus, Jatuh tempo ≤ 7 hari, Menunggu | 6.07:1 |
+| critical | #a1261b on #fbe7e3 | Tidak Sesuai, Obesitas, OVERDUE, Tidak Memenuhi, Belum lulus | 6.28:1 |
+| progress | #6b3fa0 on #f1ebf8 | On Progress, Rutin – pantau, Coaching 30 Hari | 6.32:1 |
+| neutral | `--ink-muted` on #eceef2 | Belum Mulai, Tertunda, no data | 5.9:1 |
 
-| `--input-tint` | `#fff9d6` | editable grid cells only, the workbook's own convention ("Kuning = sel input"); computed cells stay white | ink 14.2:1, muted 6.4:1, brand outline 6.1:1 |
+Good-status green sits next to the emerald brand: status is always shown as text, and good/neutral are
+plain text (no fill), so it is never confused with an action. No gradients, no yellow input tint:
+editable cells are white with a `--line-strong` border on hover/focus, computed cells sit on
+`--surface-sunken` in `--ink-muted`, and a two-item legend ("Isian" / "Dihitung otomatis") is the second cue.
 
-Core palette = paper/ink neutrals + `--brand` green. One accent: `--brand`.
-`--input-tint` is nearly the same lightness as the warning tint (1.05:1), so inside grids status
-chips always carry a 1 px tone border and their text label; the yellow never means "warning".
+## Typography, space, shape, depth, motion
 
-**Status colors** are functional, not decorative. They reproduce the workbook's own color code
-(Petunjuk: hijau / oranye / merah) that station staff already read:
+Identical to the Garuda DESIGN.md: Plus Jakarta Sans 400/600, tabular numbers, scale 13/14/16/20
+(page title 20/600), sentence case, no em dash, no exclamation marks; spacing 4/8/12/16/24/32/48,
+gutters 16/24/32; rows 40px (tables) / 36px (entry grids) / ≥ 48px (phone lists); tap targets ≥ 44px
+below 1024px; radius 6 controls, 8 panels, 4 status labels; borders only, `--shadow-float` for menus,
+dialogs and the phone sheet; transitions ≤ 120ms, none with reduced motion.
 
-| Meaning | Text on tint | Used for |
-|---|---|---|
-| good | `#1a6b45` on `#e6f4ec` (5.7:1) | Sesuai, Normal, Memenuhi, Selesai, Lulus, Tepat waktu |
-| warning | `#8a4b00` on `#fdf1d8` (6.1:1) | Perlu Perbaikan, Overweight, Kurus, Jatuh tempo ≤ 7 hari, Menunggu |
-| critical | `#a1261b` on `#fbe7e3` (6.3:1) | Tidak Sesuai, Obesitas, OVERDUE, Tidak Memenuhi, Belum lulus |
-| in progress | `#3f5f8a` on `#e8eef6` (5.6:1) | On Progress, Rutin, pantau |
-| neutral | `--ink-muted` on `#efede8` | Belum Mulai, Tertunda, no data |
+## Shell and navigation
 
-Status is never color alone: the label text is always shown.
+- **≥1024px:** fixed left sidebar 232px (logo, scope line, "Minggu ke-N dari 10"), grouped:
+  - **Pantau:** Beranda, Laporan Mingguan
+  - **Input mingguan:** Penilaian Mingguan, Cek BMI, Tindak Lanjut
+  - **Data:** Data SDM, Penggantian SDM
+  - **Pengelolaan** (owner only): Tautan Akses, Parameter, Sinkronisasi
+- **<1024px:** 56px top bar with "Menu" sheet; **<640px:** bottom bar Beranda, Penilaian, Cek BMI, Menu.
+- No global week rail: week / BMI period is a select with ‹ › steppers in each screen's toolbar.
+- Route keys and paths stay (`/sdm`, `/performa`, `/bmi`, `/tindak-lanjut`, `/penggantian`, `/laporan`).
 
-## Typography
+## Screens (focal element → primary action)
 
-- **Plus Jakarta Sans** (Google Fonts, via `next/font`). Reason: a typeface made in Jakarta for
-  Jakarta's city identity, it fits an Indonesian airport-services company, renders Bahasa Indonesia
-  well, and has tabular figures for score/BMI columns. Weights 400, 500, 600, 700.
-- `font-variant-numeric: tabular-nums` on every numeric cell, score input, date, and KPI.
-- Scale: 13 (table dense), 14 (body/table), 16 (inputs on mobile, avoids iOS zoom), 18, 22, 28.
-  Page titles 22–28/600. No uppercase-with-wide-tracking labels; section labels are sentence case 13/600 in `--ink-muted`.
-
-## Shape, depth, spacing
-
-- Radius: 6 px controls and status chips, 10 px panels. No pills.
-- Shadow: none on panels (they sit on paper with a `--line` border). Shadow only on popovers,
-  menus, and dialogs (they float above the page).
-- Spacing scale 4 / 8 / 12 / 16 / 24 / 32 / 48. Tables: 40 px rows desktop; tap targets ≥ 44 px on mobile.
-
-## Layout
-
-- **Top bar, not a sidebar**: logo left, sections as a horizontal nav, user menu right; collapses
-  to a menu button under 900 px. Reason: the core screens are wide tables (A–F scores, 5 BMI
-  periods, 10 weeks); a sidebar would take 240 px from them.
-- Each screen is composed around the decision made on it:
-  - Dashboard: "what needs attention now" (overdue and due-soon action items, staff not yet
-    assessed or measured this period, replacements past the deadline) leads; station summaries follow.
-  - Entry screens (Log Performa, Cek BMI): the grid is the page; filters (week, station) sit above it.
-  - Laporan Mingguan: reads like the printed report (A4 landscape print stylesheet,
-    signature block "Disusun oleh / Mengetahui" as in the workbook).
-- Wide tables scroll horizontally inside their own container with the first column sticky;
-  the page itself never scrolls sideways.
-
-## Voice
-
-Bahasa Indonesia, using the workbook's terms exactly (Tindak Lanjut, Kesimpulan, Sesuai,
-Perlu Perbaikan, Tidak Sesuai, Stasiun, SDM, Minggu ke-). Short, specific button labels that name
-the action ("Simpan cek BMI", "Salin tautan", "Cabut tautan", "Tambah SDM"). No em dash.
-Empty / loading / error states say why and what to do next, e.g.
-"Belum ada nilai untuk Minggu ke-1. Pemantauan mulai Senin, 12 Okt 2026."
+- **Beranda.** Station link: this week's to-do list (penilaian belum diisi n/m, cek BMI periode ini n/m,
+  tindak lanjut laporan stasiun yang OVERDUE / jatuh tempo, penggantian belum efektif, temuan minggu ini).
+  KPS/owner: station table worst first (Dinilai, Cek BMI, Tidak Sesuai, Tindak lanjut OVERDUE,
+  Penggantian belum efektif), then a compact table per laporan (SUB, DPS, CGK & HLP, KNO).
+- **Penilaian Mingguan.** Week select + grid (ID, nama, A–F 1–5, rata-rata, status); observer and catatan
+  in "Kolom lainnya". Phone: one card per person, "Simpan & berikutnya". Rekap is a secondary toggle.
+- **Cek BMI.** Period select + grid for that period (Tgl, TB, BB, BMI, kategori, syarat tinggi);
+  other periods behind "Tampilkan semua cek". Phone card with "Simpan & berikutnya"; profile (L/P,
+  catatan program BMI) and history in a per-person sheet.
+- **Tindak Lanjut.** Station links: their report group's items, sorted by flag, "Perbarui progres" dialog.
+  KPS/owner: all items with Laporan filter; definitions and Catatan KPS in the dialog.
+- **Data SDM.** Core columns (ID, nama, stasiun, L/P, NIPP, rata-rata praktik, kesimpulan, status
+  penugasan); pre/post-test and A–F baseline behind "Kolom lainnya"; "Perlu diperiksa (n)" filter
+  (Beda – verifikasi, Tidak Sesuai). Primary: "Tambah SDM".
+- **Penggantian SDM.** One meta line "Batas 31 Okt 2026 · n hari lagi · x dari y belum efektif" + grid.
+- **Laporan Mingguan.** The printed report as the page body; toolbar with week, station, "Cetak laporan".
+- **Admin.** Same as Garuda: Tautan table + dialog, Parameter grouped form, Sinkronisasi status line +
+  conflicts (owner-only technical detail behind a disclosure).
+- **Login.** Logo, title, email, password, "Masuk".

@@ -13,7 +13,7 @@ export type ReplacementGridRow = ReplacementFormRow & {
   reportGroup: string | null;
   pass: ReplacementPass | null;
   timeliness: ReplacementTimeliness | null;
-  /** "tautan ini, 8 Okt 07.55" or "pemilik / Google Sheet". */
+  /** "tautan ini, 8 Okt 07.55" or "pengelola". */
   changed: string;
 };
 
@@ -59,7 +59,7 @@ const COLUMN_OF_FIELD: Record<string, string> = {
 };
 
 function chip(value: CellValue) {
-  return value ? <StatusChip label={String(value)} bordered /> : null;
+  return value ? <StatusChip label={String(value)} /> : null;
 }
 
 const dateRule = (value: CellValue) =>
@@ -121,7 +121,7 @@ export function ReplacementGrid({ caption, rows, ctx, summary, actions, phone }:
       {
         key: "staff_code",
         header: "ID SDM",
-        label: "ID SDM yang diganti (dari Master SDM)",
+        label: "ID SDM yang diganti (dari Data SDM)",
         group: "SDM diganti",
         width: 104,
         editor: "select",

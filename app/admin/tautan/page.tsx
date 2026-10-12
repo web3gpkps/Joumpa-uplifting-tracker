@@ -11,17 +11,14 @@ import { requireAdmin } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { linkAccess } from "@/lib/workspace/access";
 
-export const metadata: Metadata = { title: "Tautan" };
+export const metadata: Metadata = { title: "Tautan Akses" };
 
 const SCOPE_ORDER = ["SUB", "DPS", "CGK", "HLP", "KNO", "KPS"];
 
 export default function TautanPage() {
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Tautan stasiun"
-        description="Stasiun dan KPS mengisi data lewat tautan, tanpa akun. Buat, salin, ganti, atau cabut tautan di sini. Tautan berlaku seperti kata sandi: bagikan hanya kepada pemegangnya."
-      />
+      <PageHeader title="Tautan Akses" />
       <Suspense fallback={<LoadingState label="Memuat daftar tautan" />}>
         <LinksData />
       </Suspense>
@@ -50,7 +47,7 @@ async function LinksData() {
       <Panel>
         <ErrorState
           title="Daftar tautan tidak bisa dimuat"
-          cause={`Database menjawab: ${error.message}`}
+          cause="Server tidak menjawab."
           action={<ReloadButton />}
         />
       </Panel>

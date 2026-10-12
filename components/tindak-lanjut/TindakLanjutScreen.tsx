@@ -1,11 +1,11 @@
 import { PageHeader, PageLoading } from "@/components/ui/PageHeader";
-import { HowToTip } from "@/components/ui/HowToTip";
 import { Panel } from "@/components/ui/Panel";
 import { EmptyState } from "@/components/ui/States";
 import { todayInJakarta } from "@/components/shell/programme-calendar";
 import { ActionGrid } from "@/components/tindak-lanjut/ActionGrid";
 import { AddActionItemButton } from "@/components/tindak-lanjut/AddActionItemButton";
-import { ReportGroupFilter } from "@/components/tindak-lanjut/ReportGroupFilter";
+import { UrlSelect } from "@/components/ui/UrlSelect";
+import type { UrlOption } from "@/components/ui/url-options";
 import { TindakLanjutBoard, type GroupSummary } from "@/components/tindak-lanjut/TindakLanjutBoard";
 import { asDueRule, toActionView } from "@/components/tindak-lanjut/action-view";
 import { actionProgress, reportGroups, TOTAL } from "@/lib/aggregate";
@@ -70,14 +70,13 @@ export function TindakLanjutScreen({ access, ws, searchParams }: ScreenProps) {
 
   const sharedGroup = ws.scope === "CGK" || ws.scope === "HLP";
   const scopeName = groupFilter ? `laporan ${groupFilter}` : ws.isKps ? "semua laporan" : `laporan ${groupKeys[0] ?? ws.scope}`;
-  const filterOptions = ws.isKps
+  const filterOptions: UrlOption[] | null = ws.isKps
     ? [null, ...groupKeys].map((key) => {
         const row = progressRows.find((r) => r.key === (key ?? TOTAL));
+        const name = key ?? "Semua laporan";
         return {
-          key,
-          label: key ?? "Semua laporan",
-          meta: row ? `${row.selesai}/${row.total}` : "",
-          metaLabel: row ? `${row.selesai} dari ${row.total} butir selesai` : "",
+          value: key ?? "semua",
+          label: row ? `${name} · ${row.selesai} dari ${row.total} selesai` : name,
           href: links.to("tindakLanjut", { laporan: key }),
         };
       })
@@ -89,16 +88,8 @@ export function TindakLanjutScreen({ access, ws, searchParams }: ScreenProps) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        context={ws.scopeLabel}
+        meta={sharedGroup ? `${ws.scopeLabel} · laporan CGK & HLP` : ws.scopeLabel}
         title="Tindak Lanjut"
-        description={
-          <>
-            Butir 1 sampai 11 dari tabel 7.2 laporan training, butir 12 dan 13 tambahan (cek BMI dan laporan
-            performa mingguan). Perbarui Status, % Progres, Tgl update, dan Realisasi / Bukti setiap minggu.
-            {ws.isKps ? " KPS dan pemilik juga mengisi Catatan KPS dan definisi butir." : null}
-            {sharedGroup ? ` Tautan ${ws.scope} mengerjakan butir laporan gabungan CGK & HLP.` : null}
-          </>
-        }
         actions={
           isOwner ? (
             <AddActionItemButton
@@ -109,7 +100,7 @@ export function TindakLanjutScreen({ access, ws, searchParams }: ScreenProps) {
           ) : undefined
         }
       >
-        {filterOptions ? <ReportGroupFilter options={filterOptions} current={groupFilter} /> : null}
+        {filterOptions ? <UrlSelect label="Laporan" options={filterOptions} current={groupFilter ?? "semua"} /> : null}
         <p className="text-base text-ink">
           {overdue + dueSoon === 0 ? (
             <>Tidak ada butir {scopeName} yang OVERDUE atau jatuh tempo dalam 7 hari.</>
@@ -124,8 +115,8 @@ export function TindakLanjutScreen({ access, ws, searchParams }: ScreenProps) {
 
       {!complete ? (
         <p className="text-sm text-warning">
-          Parameter program tidak lengkap, jadi batas waktu bergulir memakai nilai bawaan workbook. Pemilik aplikasi
-          bisa memeriksanya di halaman Parameter.
+          Parameter program tidak lengkap, jadi batas waktu bergulir memakai nilai bawaan. Pemilik aplikasi bisa
+          memeriksanya di halaman Parameter.
         </p>
       ) : null}
 
@@ -139,12 +130,8 @@ export function TindakLanjutScreen({ access, ws, searchParams }: ScreenProps) {
           </EmptyState>
         </Panel>
       ) : (
-        <Panel
-          padding="flush"
-          title={`Tindak Lanjut ${scopeName}`}
-          description={<HowToTip id="tindak-lanjut">pilih Status, ketik % Progres (0 sampai 100) dan bukti yang bisa dicek. Saat progres diubah, Tgl update terisi tanggal hari ini kecuali Anda mengetiknya sendiri. Batas waktu, Sisa hari, dan Flag dihitung otomatis.</HowToTip>}
-        >
-          <div className="px-4 pb-4 sm:px-6 sm:pb-6">
+        <Panel padding="flush" title={`Tindak Lanjut ${scopeName}`}>
+          <div className="px-4 pb-4">
             <ActionGrid
               // A new report-group filter starts a fresh order (most urgent first).
               key={groupFilter ?? "semua"}
@@ -157,7 +144,7 @@ export function TindakLanjutScreen({ access, ws, searchParams }: ScreenProps) {
               showGroup={ws.isKps && !groupFilter}
               caption={`Tindak Lanjut ${scopeName}`}
               phone={
-                <div className="-mx-4 sm:-mx-6">
+                <div className="-mx-4">
                   <TindakLanjutBoard
                     accessKey={access.key}
                     isKps={ws.isKps}

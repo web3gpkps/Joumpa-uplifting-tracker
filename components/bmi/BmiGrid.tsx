@@ -65,12 +65,12 @@ const SEARCH = { placeholder: "Nama atau ID", text: (r: BmiGridRow) => `${r.code
 const FIELD_OF_ERROR: Record<string, string> = { height_cm: "tb", weight_kg: "bb", check_date: "tgl" };
 
 function chip(value: CellValue) {
-  return value ? <StatusChip label={String(value)} bordered /> : null;
+  return value ? <StatusChip label={String(value)} /> : null;
 }
 
 function requirementCell(row: BmiGridRow) {
   if (row.heightRequirement === "Memenuhi" || row.heightRequirement === "Tidak Memenuhi") {
-    return <StatusChip label={row.heightRequirement} bordered />;
+    return <StatusChip label={row.heightRequirement} />;
   }
   // A missing height standard is explained once, under the grid.
   if (row.heightRequirement === null && row.checks.some(Boolean) && row.gender !== "L" && row.gender !== "P") {

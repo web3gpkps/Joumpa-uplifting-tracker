@@ -2,100 +2,37 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { cx } from "@/components/ui/cx";
-import { isActive, type NavItem } from "./nav-items";
+import { isNavActive, type NavLink, type NavSection } from "@/lib/workspace/access";
 
-type ShellNavProps = {
-  /** Logo + context (product, scope), rendered on the server and passed in. */
-  brand: ReactNode;
-  /** Sections. Plain data, so a server component can build them (e.g. per token). */
-  items: NavItem[];
-  /** Right side of row 1 on desktop, bottom of the menu on phones (user + sign-out, link label). */
-  aside?: ReactNode;
-  /** Accessible name of the nav landmark. */
-  label: string;
-};
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
-function linkClasses(active: boolean): string {
+function navLinkClasses(active: boolean): string {
   return cx(
-    "flex min-h-11 items-center px-3 font-semibold whitespace-nowrap transition-colors duration-150",
-    // Phones and tablets: full-width 44 px rows, the current one on --brand-tint.
-    "rounded-control text-base",
-    active ? "bg-brand-tint text-ink" : "text-ink-muted hover:bg-neutral-tint hover:text-ink",
-    // From 900 px: a horizontal row; the current section gets a 2 px --brand underline.
-    "nav:-mb-px nav:rounded-none nav:border-b-2 nav:bg-transparent nav:text-sm nav:hover:bg-transparent",
-    active ? "nav:border-brand" : "nav:border-transparent nav:hover:border-line-strong",
+    "flex min-h-11 items-center rounded-control px-3 text-sm transition-colors duration-120 lg:min-h-9",
+    active ? "bg-brand-tint font-semibold text-brand" : "text-ink hover:bg-bg",
   );
 }
 
-/**
- * Top bar rows 1 and 2 for both shells. Under 900 px the nav collapses behind a labelled
- * "Menu" disclosure; Escape closes it and returns focus to the button.
- */
-export function ShellNav({ brand, items, aside, label }: ShellNavProps) {
+/** The grouped nav list, shared by the sidebar (≥1024px) and the phone menu sheet. */
+function NavList({ sections, onNavigate }: { sections: NavSection[]; onNavigate?: () => void }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        buttonRef.current?.focus();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open]);
-
   return (
-    <>
-      <div className="flex min-h-14 items-center gap-3">
-        {brand}
-        {aside ? (
-          <div className="ml-auto hidden max-w-[24rem] min-w-0 items-center gap-3 nav:flex">{aside}</div>
-        ) : null}
-        <button
-          ref={buttonRef}
-          type="button"
-          aria-expanded={open}
-          aria-controls="menu-utama"
-          onClick={() => setOpen((value) => !value)}
-          className="ml-auto inline-flex min-h-11 shrink-0 items-center gap-2 rounded-control border border-line-strong bg-surface px-3 text-sm font-semibold text-ink transition-colors duration-150 hover:bg-neutral-tint nav:hidden"
-        >
-          <span aria-hidden="true" className="flex w-4 flex-col gap-[3px]">
-            <span className="h-0.5 bg-ink" />
-            <span className="h-0.5 bg-ink" />
-            <span className="h-0.5 bg-ink" />
-          </span>
-          {open ? "Tutup menu" : "Menu"}
-        </button>
-      </div>
-
-      <div
-        id="menu-utama"
-        className={cx(open ? "block" : "hidden", "pb-3 nav:block nav:border-b nav:border-line nav:pb-0")}
-      >
-        <nav aria-label={label}>
-          <ul className="flex flex-col gap-1 nav:-mx-3 nav:flex-row nav:flex-wrap nav:gap-0">
-            {items.map((item) => {
-              const active = isActive(pathname, item);
+    <div className="flex flex-col gap-5">
+      {sections.map((section) => (
+        <div key={section.key}>
+          <p className="section-label mb-1 px-3">{section.label}</p>
+          <ul className="flex flex-col gap-0.5">
+            {section.items.map((item) => {
+              const active = isNavActive(pathname, item);
               return (
-                <li key={item.href} className={item.groupLabel ? "mt-3 nav:mt-0 nav:flex nav:items-center" : undefined}>
-                  {item.groupLabel ? (
-                    <>
-                      {/* Phones: a small heading. Desktop: a thin divider before the group. */}
-                      <span className="section-label mb-1 block px-3 nav:hidden">{item.groupLabel}</span>
-                      <span aria-hidden="true" className="mx-2 hidden h-5 w-px bg-line-strong nav:block" />
-                    </>
-                  ) : null}
+                <li key={item.href}>
                   <Link
                     href={item.href}
                     aria-current={active ? "page" : undefined}
-                    onClick={() => setOpen(false)}
-                    className={linkClasses(active)}
+                    onClick={onNavigate}
+                    className={navLinkClasses(active)}
                   >
                     {item.label}
                   </Link>
@@ -103,13 +40,203 @@ export function ShellNav({ brand, items, aside, label }: ShellNavProps) {
               );
             })}
           </ul>
-        </nav>
-        {aside ? (
-          <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 nav:hidden">
-            {aside}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Sidebar navigation (≥1024px). Client only for the active item. */
+export function SidebarNav({ sections, label }: { sections: NavSection[]; label: string }) {
+  return (
+    <nav aria-label={label}>
+      <NavList sections={sections} />
+    </nav>
+  );
+}
+
+type MobileChromeProps = {
+  /** Same groups as the sidebar. */
+  sections: NavSection[];
+  /** Phone bottom bar links (<640px), three at most; "Menu" is added after them. */
+  bottomItems: NavLink[];
+  /** Accessible name of the nav landmarks, e.g. "Menu Stasiun SUB". */
+  label: string;
+  /** Logo at 24px, rendered on the server. */
+  brand: ReactNode;
+  /** Where the logo leads (Beranda). */
+  homeHref: string;
+  /** Short scope next to the logo: a station code ("SUB", "KPS") or "Pemilik". */
+  scopeShort: string;
+  /** Top of the sheet: scope line and programme week. */
+  sheetHeader: ReactNode;
+  /** Bottom of the sheet: link label, or the owner's email and "Keluar". */
+  sheetFooter?: ReactNode;
+};
+
+/**
+ * Chrome under 1024px: a 56px top bar (logo, scope code, "Menu") and, under 640px, a bottom
+ * bar (Beranda, Penilaian, Cek BMI, Menu). Both "Menu" buttons open the same left sheet on a
+ * native modal <dialog>: the page behind is inert, Tab cycles inside, Escape and the backdrop
+ * close it, and focus returns to the button that opened it.
+ */
+export function MobileChrome({
+  sections,
+  bottomItems,
+  label,
+  brand,
+  homeHref,
+  scopeShort,
+  sheetHeader,
+  sheetFooter,
+}: MobileChromeProps) {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const returnFocusTo = useRef<HTMLElement | null>(null);
+  const sheetId = useId();
+  const titleId = useId();
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !dialog.open) {
+      returnFocusTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      dialog.showModal();
+    } else if (!open && dialog.open) {
+      dialog.close();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const onCancel = (event: Event) => {
+      event.preventDefault();
+      setOpen(false);
+    };
+    const onClose = () => {
+      const target = returnFocusTo.current;
+      returnFocusTo.current = null;
+      if (target?.isConnected) target.focus();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const focusable = [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.getClientRects().length > 0);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    dialog.addEventListener("cancel", onCancel);
+    dialog.addEventListener("close", onClose);
+    dialog.addEventListener("keydown", onKeyDown);
+    return () => {
+      dialog.removeEventListener("cancel", onCancel);
+      dialog.removeEventListener("close", onClose);
+      dialog.removeEventListener("keydown", onKeyDown);
+    };
+  }, []);
+
+  const close = () => setOpen(false);
+  const menuButton = (extra: string) => (
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      aria-controls={sheetId}
+      onClick={() => setOpen(true)}
+      className={extra}
+    >
+      <span aria-hidden="true" className="flex w-4 flex-col gap-[3px]">
+        <span className="h-0.5 bg-current" />
+        <span className="h-0.5 bg-current" />
+        <span className="h-0.5 bg-current" />
+      </span>
+      Menu
+    </button>
+  );
+
+  return (
+    <>
+      <header
+        data-print="hide"
+        className="sticky top-0 z-30 flex h-(--topbar-height) items-center gap-3 border-b border-line bg-surface px-4 sm:px-6 lg:hidden"
+      >
+        <Link href={homeHref} aria-label="Beranda" className="flex shrink-0 items-center rounded-control">
+          {brand}
+        </Link>
+        <span className="station-code min-w-0 truncate border-l border-line pl-3 text-sm text-ink">{scopeShort}</span>
+        {menuButton(
+          "ml-auto inline-flex min-h-11 shrink-0 items-center gap-2 rounded-control border border-line-strong bg-surface px-3 text-sm font-semibold text-ink transition-colors duration-120 hover:bg-bg",
+        )}
+      </header>
+
+      <nav
+        aria-label={`${label}, pintasan`}
+        data-print="hide"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
+      >
+        <ul className="grid h-(--bottombar-height) grid-cols-4">
+          {bottomItems.map((item) => {
+            const active = isNavActive(pathname, item);
+            return (
+              <li key={item.href} className="flex">
+                <Link
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cx(
+                    "flex flex-1 flex-col items-center justify-center text-xs",
+                    active ? "font-semibold text-brand" : "text-ink-muted",
+                  )}
+                >
+                  <span aria-hidden="true" className={cx("mb-1 h-0.5 w-6 rounded-status", active ? "bg-brand" : "bg-transparent")} />
+                  {item.shortLabel}
+                </Link>
+              </li>
+            );
+          })}
+          <li className="flex">
+            {menuButton("flex flex-1 flex-col items-center justify-center gap-1 text-xs text-ink-muted")}
+          </li>
+        </ul>
+      </nav>
+
+      <dialog
+        ref={dialogRef}
+        id={sheetId}
+        aria-labelledby={titleId}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) close();
+        }}
+        className={cx(
+          "fixed inset-y-0 left-0 m-0 h-dvh max-h-none w-[min(20rem,85vw)] max-w-none border-0 border-r border-line bg-surface p-0 text-ink shadow-float",
+          "open:flex open:flex-col backdrop:bg-ink/40",
+        )}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+          <div id={titleId} className="min-w-0">
+            {sheetHeader}
           </div>
-        ) : null}
-      </div>
+          <button
+            type="button"
+            onClick={close}
+            className="-mr-2 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-control text-sm font-semibold text-ink-muted hover:bg-bg hover:text-ink"
+          >
+            Tutup
+          </button>
+        </div>
+        <nav aria-label={label} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-4">
+          <NavList sections={sections} onNavigate={close} />
+        </nav>
+        {sheetFooter ? <div className="border-t border-line px-4 py-3">{sheetFooter}</div> : null}
+      </dialog>
     </>
   );
 }

@@ -115,7 +115,7 @@ function DialogBody({ accessKey, isKps, today, settings, item, onBusyChange, onS
 
 function ItemSummary({ item, showKpsNotes }: { item: ActionView; showKpsNotes: boolean }) {
   return (
-    <dl className="grid gap-3 rounded-control border border-line bg-paper p-3 sm:grid-cols-2">
+    <dl className="grid gap-3 rounded-control border border-line bg-bg p-3 sm:grid-cols-2">
       <div className="sm:col-span-2">
         <dt className="section-label">Tindakan</dt>
         <dd className="mt-0.5 text-ink">{item.action ?? "Belum diisi"}</dd>

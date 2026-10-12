@@ -181,7 +181,7 @@ function AddForm({
         <Input value={values.schedule} onChange={(e) => set("schedule")(e.target.value)} />
       </Field>
       {message ? (
-        <p role="alert" className="text-sm font-medium text-critical">
+        <p role="alert" className="text-sm font-semibold text-critical">
           {message}
         </p>
       ) : null}

@@ -67,7 +67,7 @@ export function DeleteStaffDialog({ row, onClose, accessKey, deleteAction, onDel
       }}
       dismissible={!busy}
       title={target ? `Hapus SDM ${target.code} ${target.name}?` : "Hapus SDM?"}
-      description="Penghapusan ini permanen dan tidak bisa dibatalkan. Google Sheet ikut diperbarui pada sinkronisasi berikutnya."
+      description="Penghapusan ini permanen dan tidak bisa dibatalkan."
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={busy}>
@@ -90,7 +90,7 @@ export function DeleteStaffDialog({ row, onClose, accessKey, deleteAction, onDel
               : "Tidak ada baris Penggantian SDM yang tertaut ke SDM ini."}
           </p>
           {error ? (
-            <p role="alert" className="rounded-control bg-critical-tint px-3 py-2 font-medium text-critical">
+            <p role="alert" className="rounded-control bg-critical-tint px-3 py-2 font-semibold text-critical">
               {error}
             </p>
           ) : null}

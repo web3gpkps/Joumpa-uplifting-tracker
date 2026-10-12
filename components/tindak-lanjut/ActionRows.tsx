@@ -45,9 +45,9 @@ function LongText({ value, empty }: { value: string | null; empty: string }) {
   return value ? <span className="whitespace-pre-line">{value}</span> : <Muted>{empty}</Muted>;
 }
 
-/** The seeded rows were never updated: "lewat pemilik / Google Sheet" would only add noise there. */
+/** The seeded rows were never updated: "lewat pengelola" would only add noise there. */
 function showChangedBy(view: ActionView): boolean {
-  return view.updatedOn !== null || view.lastChangedBy !== "pemilik / Google Sheet";
+  return view.updatedOn !== null || view.lastChangedBy !== "pengelola";
 }
 
 function saveState(savedAt: Record<string, string>, code: string) {

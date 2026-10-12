@@ -106,7 +106,7 @@ export function TindakLanjutBoard({ accessKey, isKps, isOwner = false, today, se
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 px-4 sm:px-6">
+      <div className="flex flex-col gap-3 px-4">
         <div role="status" aria-live="polite">
           {notice ? <p className="text-sm font-semibold text-good">{notice}</p> : null}
         </div>
@@ -120,7 +120,7 @@ export function TindakLanjutBoard({ accessKey, isKps, isOwner = false, today, se
       <form
         aria-label="Saring tindak lanjut"
         onSubmit={(e) => e.preventDefault()}
-        className="flex flex-col gap-3 px-4 sm:px-6"
+        className="flex flex-col gap-3 px-4"
       >
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Status">
@@ -145,7 +145,7 @@ export function TindakLanjutBoard({ accessKey, isKps, isOwner = false, today, se
           <Field label="Urutan">
             <Select value={order} onChange={(e) => setOrder(e.target.value === "id" ? "id" : "urgency")}>
               <option value="urgency">Paling mendesak dulu</option>
-              <option value="id">Urutan ID workbook</option>
+              <option value="id">Urutan ID</option>
             </Select>
           </Field>
         </div>
@@ -154,7 +154,7 @@ export function TindakLanjutBoard({ accessKey, isKps, isOwner = false, today, se
             Menampilkan {visible.length} dari {items.length} butir.
           </p>
           {filtersActive ? (
-            <Button variant="quiet" size="sm" onClick={clearFilters}>
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
               Hapus filter
             </Button>
           ) : null}
@@ -171,14 +171,14 @@ export function TindakLanjutBoard({ accessKey, isKps, isOwner = false, today, se
             aria-labelledby={`laporan-${g.key.replace(/[^A-Za-z]+/g, "-").toLowerCase()}-judul`}
             className="border-t border-line"
           >
-            <div className="px-4 pt-4 pb-3 sm:px-6">
+            <div className="px-4 pt-4 pb-3">
               <h3 id={`laporan-${g.key.replace(/[^A-Za-z]+/g, "-").toLowerCase()}-judul`} className="text-base font-semibold text-ink">
                 Laporan {g.key}
               </h3>
               <p className="mt-0.5 text-sm text-ink-muted">{groupLine(g)}</p>
             </div>
             {rows.length === 0 ? (
-              <div className="px-4 sm:px-6">
+              <div className="px-4">
                 <EmptyState
                   title={`Tidak ada butir ${g.key} dengan filter ini`}
                   action={

@@ -30,7 +30,7 @@ export function KpiTile({ label, value, total, basis, note, tone = "neutral", hr
     <Link
       href={href}
       aria-label={spoken}
-      className="group flex min-h-28 flex-col gap-1 rounded-panel border border-line bg-surface p-4 transition-colors duration-150 hover:border-line-strong"
+      className="group flex min-h-28 flex-col gap-1 rounded-panel border border-line bg-surface p-4 transition-colors duration-120 hover:border-line-strong"
     >
       <span className="section-label">{label}</span>
       {value === null ? (

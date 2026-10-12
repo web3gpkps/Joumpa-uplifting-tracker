@@ -29,7 +29,7 @@ export function RowTh({ children }: { children: ReactNode }) {
 }
 
 export function totalRowClass(key: string): string | undefined {
-  return key === TOTAL || key === "SEMUA" ? "font-semibold [&>*]:bg-paper" : undefined;
+  return key === TOTAL || key === "SEMUA" ? "font-semibold [&>*]:bg-bg" : undefined;
 }
 
 /** A count that needs action reads in its status tone; the column header carries the meaning. */
@@ -104,7 +104,7 @@ export function PerformanceTable({
           <ColTh>Laporan: Sesuai*</ColTh>
           <ColTh>Laporan: Perlu Perbaikan</ColTh>
           <ColTh>Laporan: Tidak Sesuai</ColTh>
-          <ColTh>Kriteria 6.2: Sesuai</ColTh>
+          <ColTh>Kriteria: Sesuai</ColTh>
           <ColTh>Kesimpulan beda (verifikasi)</ColTh>
           <ColTh>Rata-rata baseline</ColTh>
           <ColTh>Rata-rata skor terkini (SDM dinilai)</ColTh>

@@ -45,7 +45,7 @@ function Metric({ label, href, children }: { label: string; href: string; childr
     <li>
       <Link
         href={href}
-        className="flex min-h-11 flex-col justify-center gap-0.5 px-4 py-2 transition-colors duration-150 hover:bg-paper"
+        className="flex min-h-11 flex-col justify-center gap-0.5 px-4 py-2 transition-colors duration-120 hover:bg-bg"
       >
         <span className="flex items-baseline justify-between gap-3">
           <span className="text-sm text-ink-muted">{label}</span>
@@ -77,7 +77,7 @@ export function StationCards({ summary, links }: { summary: DashboardSummary; li
     <ul className="flex flex-col gap-3">
       {summary.comparison.map((row) => (
         <li key={row.station} className="overflow-hidden rounded-control border border-line bg-surface">
-          <h3 className="flex items-baseline justify-between gap-3 border-b border-line bg-paper px-4 py-2">
+          <h3 className="flex items-baseline justify-between gap-3 border-b border-line bg-bg px-4 py-2">
             <span className="text-base font-semibold text-ink">{row.station}</span>
             {row.sharedGroup ? <span className="text-xs text-ink-muted">Tindak lanjut gabungan {row.group}</span> : null}
           </h3>

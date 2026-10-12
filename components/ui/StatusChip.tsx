@@ -17,7 +17,7 @@ import { cx } from "./cx";
 
 export type StatusTone = "good" | "warning" | "critical" | "progress" | "neutral";
 
-/** Every status label lib/rules.ts can produce (the workbook's own wording). */
+/** Every status label lib/rules.ts can produce. */
 export type RuleStatusLabel =
   | ReportConclusion
   | CriteriaStatus
@@ -34,42 +34,41 @@ export type RuleStatusLabel =
   | Trend;
 
 /*
- * Tone per label, following the workbook's colour code (Petunjuk: hijau / oranye /
- * merah) as transcribed in DESIGN.md. `satisfies` makes this exhaustive: if
- * lib/rules.ts adds or renames a label, the build fails here until it gets a tone.
- * "Lewat <tanggal>" (late replacement) is matched by prefix below.
+ * THE tone map (DESIGN.md Tokens). `satisfies` makes it exhaustive: if lib/rules.ts adds or
+ * renames a label, the build fails here until it gets a tone. "Lewat <tanggal>" (late
+ * replacement) is matched by prefix below. Do not add tone tables anywhere else.
  */
 const RULE_TONES = {
-  // Kesimpulan laporan, status kriteria 6.2, status mingguan
+  // Report conclusion, criteria status, weekly status
   Sesuai: "good",
   "Sesuai dengan Catatan": "good",
   "Perlu Perbaikan": "warning",
   "Tidak Sesuai": "critical",
-  // Konsistensi kesimpulan vs kriteria
+  // Consistency of the report conclusion with the criteria
   OK: "good",
   "Beda – verifikasi": "warning",
-  // Kategori BMI
+  // BMI category
   Kurus: "warning",
   Normal: "good",
   Overweight: "warning",
   Obesitas: "critical",
-  // Syarat tinggi badan
+  // Height requirement
   Memenuhi: "good",
   "Tidak Memenuhi": "critical",
   "Isi standar di Parameter": "neutral",
-  // Status dan jenis tindak lanjut
+  // Action item status and kind
   "Belum Mulai": "neutral",
   "On Progress": "progress",
   Selesai: "good",
   Tertunda: "neutral",
   Sekali: "neutral",
   Rutin: "progress",
-  // Flag tindak lanjut
+  // Action item flag
   OVERDUE: "critical",
   "Jatuh tempo ≤ 7 hari": "warning",
   "Rutin – pantau": "progress",
   "On Track": "good",
-  // Penggantian SDM
+  // Replacement result, timeliness, reported
   "Lulus – boleh bertugas": "good",
   "Belum lulus": "critical",
   "Belum training/dinilai": "neutral",
@@ -77,19 +76,25 @@ const RULE_TONES = {
   Menunggu: "warning",
   Ya: "good",
   Belum: "warning",
-  // Status penugasan (the default "Aktif" stays quiet so exceptions stand out)
+  // Assignment status ("Aktif" stays quiet so exceptions stand out)
   Aktif: "neutral",
   "Coaching 30 Hari": "progress",
   Diganti: "neutral",
   Ditarik: "critical",
-  // Tren nilai
+  // Trend
   "▲ Naik": "good",
   "▼ Turun": "warning",
   "= Tetap": "neutral",
 } satisfies Record<Exclude<RuleStatusLabel, `Lewat ${string}`>, StatusTone>;
 
+/** Labels the screens show that lib/rules does not type as a status. */
+const SCREEN_TONES: Record<string, StatusTone> = {
+  "NIPP ganda": "warning",
+  ganda: "warning",
+};
+
 const TONE_BY_LABEL = new Map<string, StatusTone>(
-  Object.entries(RULE_TONES).map(([label, tone]) => [normalise(label), tone]),
+  Object.entries({ ...SCREEN_TONES, ...RULE_TONES }).map(([label, tone]) => [normalise(label), tone]),
 );
 
 function normalise(label: string): string {
@@ -104,47 +109,40 @@ export function toneForStatus(label: string | null | undefined): StatusTone {
   return TONE_BY_LABEL.get(key) ?? "neutral";
 }
 
+/*
+ * Only exceptions draw the eye: critical / warning / progress get a 4px tinted fill,
+ * good and neutral are plain text in their tone colour.
+ */
 const toneClasses: Record<StatusTone, string> = {
-  good: "bg-good-tint text-good", // 5.7:1
-  warning: "bg-warning-tint text-warning", // 6.1:1
-  critical: "bg-critical-tint text-critical", // 6.3:1
-  progress: "bg-progress-tint text-progress", // 5.6:1
-  neutral: "bg-neutral-tint text-neutral", // 5.8:1
+  good: "text-good", // 5.69:1
+  neutral: "text-ink-muted", // 6.85:1
+  warning: "rounded-status bg-warning-tint px-1.5 text-warning", // 6.07:1
+  critical: "rounded-status bg-critical-tint px-1.5 text-critical", // 6.28:1
+  progress: "rounded-status bg-progress-tint px-1.5 text-progress", // 6.32:1
 };
 
 type StatusChipProps = {
   /** The status text from lib/rules (or the DB), shown as-is. Status is never colour alone. */
   label: string | null | undefined;
-  /** Override the looked-up tone (rarely needed). */
-  tone?: StatusTone;
-  /** Text shown when label is empty. */
-  emptyLabel?: string;
   /**
-   * 1 px border in the tone's colour. Use inside DataGrid: the yellow input tint is almost
-   * as light as the warning tint, so a chip there needs an edge (DESIGN.md --input-tint).
+   * Override the looked-up tone. Avoid: add the label to RULE_TONES instead. Kept for
+   * labels whose tone depends on context (e.g. a link that is active vs. revoked).
    */
-  bordered?: boolean;
+  tone?: StatusTone;
+  /** Text shown when label is empty (neutral). */
+  emptyLabel?: string;
   className?: string;
 };
 
-const borderClasses: Record<StatusTone, string> = {
-  good: "border border-good",
-  warning: "border border-warning",
-  critical: "border border-critical",
-  progress: "border border-progress",
-  neutral: "border border-neutral",
-};
-
-/** Status label on its tone's tint, 6 px radius. Server-component friendly. */
-export function StatusChip({ label, tone, emptyLabel = "Belum ada data", bordered = false, className }: StatusChipProps) {
+/** Status label in its tone (DESIGN.md Tokens). Server-component friendly. */
+export function StatusChip({ label, tone, emptyLabel = "Belum ada data", className }: StatusChipProps) {
   const hasLabel = Boolean(label && label.trim() !== "");
   const resolved = tone ?? (hasLabel ? toneForStatus(label) : "neutral");
   return (
     <span
       className={cx(
-        "inline-flex max-w-full items-center rounded-control px-2 py-0.5 text-xs font-semibold whitespace-nowrap",
+        "inline-flex max-w-full items-center py-0.5 text-xs font-semibold whitespace-nowrap",
         toneClasses[resolved],
-        bordered && borderClasses[resolved],
         className,
       )}
     >

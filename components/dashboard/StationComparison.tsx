@@ -6,7 +6,7 @@ import type { SheetLinks } from "@/lib/workspace/access";
 import { DataTable, Td, Th } from "@/components/ui/DataTable";
 import { linkTo } from "./KpiTile";
 
-const cellLink = "-mx-3 -my-2 flex min-h-10 flex-col justify-center gap-1 px-3 py-2 hover:bg-paper";
+const cellLink = "-mx-3 -my-2 flex min-h-10 flex-col justify-center gap-1 px-3 py-2 hover:bg-bg";
 
 function Bar({ value, total }: { value: number; total: number }) {
   const pct = total === 0 ? 0 : Math.round((value / total) * 100);

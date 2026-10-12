@@ -1,6 +1,6 @@
 /*
- * The 10-week rail's view of the schedule. Date math comes from lib/dates and lib/rules,
- * so the rail always agrees with Laporan and the entry screens.
+ * The programme schedule (10 weeks, 5 BMI periods) from Parameter. Date math comes from
+ * lib/dates and lib/rules, so the shell always agrees with Laporan and the entry screens.
  */
 import { diffDays, formatHariTanggal, formatTanggal, formatTanggalPendek, toIsoDate, type IsoDate } from "@/lib/dates";
 import { DEFAULT_SETTINGS, bmiCheckDate, weekEnd, weekStart, type Settings } from "@/lib/rules";
@@ -120,6 +120,18 @@ export function programmeSummary(settings: ProgrammeSettings, today: IsoDate): s
     second = ` Jadwal cek BMI terakhir (periode ${s.bmiPeriods}) sudah lewat.`;
   }
   return first + second;
+}
+
+/**
+ * The shell's one programme line (DESIGN.md Shell): "Minggu ke-2 dari 10" during the
+ * programme, "Mulai 12 Okt 2026" before it, "Selesai 20 Des 2026" after it.
+ */
+export function programmeWeekLine(settings: ProgrammeSettings, today: IsoDate): string {
+  const s = asRuleSettings(settings);
+  const status = programmeStatus(s, today);
+  if (status.phase === "before") return `Mulai ${formatTanggal(status.startDate)}`;
+  if (status.phase === "after") return `Selesai ${formatTanggal(status.endDate)}`;
+  return `Minggu ke-${status.week} dari ${s.weeks}`;
 }
 
 /** Readable week label for screen readers: "Minggu ke-3, mulai Senin, 26 Okt 2026". */

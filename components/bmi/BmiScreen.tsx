@@ -13,14 +13,15 @@ import {
   stationCodes,
   type ScreenProps,
   type Workspace,
+  sheetLabel,
 } from "@/lib/workspace";
 import { ButtonLink } from "@/components/ui/Button";
 import { DataTable, Td, Th, Tr } from "@/components/ui/DataTable";
 import { PageHeader, PageLoading } from "@/components/ui/PageHeader";
 import { Panel } from "@/components/ui/Panel";
 import { EmptyState, ErrorState } from "@/components/ui/States";
-import { StationFilter } from "@/components/ui/StationFilter";
-import { HowToTip } from "@/components/ui/HowToTip";
+import { StationSelect } from "@/components/ui/StationSelect";
+import { ALL_STATIONS, type UrlOption } from "@/components/ui/url-options";
 import { RememberView } from "@/components/ui/RememberView";
 import { oneTo, rememberScope } from "@/components/ui/remember";
 import { StatusChip, toneForStatus } from "@/components/ui/StatusChip";
@@ -30,9 +31,7 @@ import { BmiGrid, type BmiGridRow } from "./BmiGrid";
 import { formatRatio } from "@/lib/format";
 import { PeriodRail, type RailPeriod } from "./PeriodRail";
 
-const TITLE = "Cek BMI 2 mingguan";
-const DESCRIPTION =
-  "Ukur tinggi dan berat tiap SDM pada tanggal cek, lalu simpan per baris. BMI dan kategori dihitung otomatis.";
+const TITLE = sheetLabel("bmi");
 
 /** "tautan ini, 8 Okt 07.55" (the grid column header already says "Terakhir diubah lewat"). */
 function changedWhen(row: { updatedByLink?: string | null; updatedAt?: string | null }, ws: Workspace): string {
@@ -72,7 +71,7 @@ export function BmiScreen({ access, ws, searchParams: query }: ScreenProps) {
   if (!settings) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title={TITLE} context={ws.scopeLabel} description={DESCRIPTION} />
+        <PageHeader title={TITLE} meta={ws.scopeLabel} />
         <Panel>
           <ErrorState
             title="Jadwal cek BMI belum terbaca"
@@ -170,14 +169,13 @@ export function BmiScreen({ access, ws, searchParams: query }: ScreenProps) {
           : null;
 
   const scopeName = stationFilter ? `Stasiun ${stationFilter}` : ws.isKps ? "semua stasiun" : ws.scopeLabel;
-  const stationOptions = ws.isKps
+  const stationOptions: UrlOption[] | null = ws.isKps
     ? [null, ...stationCodes(ws)].map((code) => {
         const row = periodRows[period - 1].find((r) => r.key === (code ?? TOTAL));
+        const name = code ?? "Semua stasiun";
         return {
-          code,
-          label: code ?? "Semua stasiun",
-          meta: row ? `${row.checked}/${row.staffCount}` : undefined,
-          metaLabel: row ? `${row.checked} dari ${row.staffCount} SDM sudah dicek` : undefined,
+          value: code ?? ALL_STATIONS,
+          label: row ? `${name} · ${row.checked} dari ${row.staffCount} dicek` : name,
           href: href(period, code),
         };
       })
@@ -185,8 +183,8 @@ export function BmiScreen({ access, ws, searchParams: query }: ScreenProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={TITLE} context={ws.scopeLabel} description={DESCRIPTION}>
-        {stationOptions ? <StationFilter options={stationOptions} current={stationFilter} /> : null}
+      <PageHeader title={TITLE} meta={ws.scopeLabel}>
+        {stationOptions ? <StationSelect options={stationOptions} current={stationFilter ?? ALL_STATIONS} /> : null}
         <RememberView
           scope={rememberScope(access, ws)}
           allowed={{ periode: oneTo(settings.bmiPeriods), ...(ws.isKps ? { stasiun: stationCodes(ws) } : {}) }}
@@ -225,28 +223,24 @@ export function BmiScreen({ access, ws, searchParams: query }: ScreenProps) {
         </div>
       </PageHeader>
 
-      <Panel
-        padding="flush"
-        title={`Cek BMI ${scopeName}`}
-        description={<HowToTip id="bmi">isi TB dan BB (desimal pakai koma, 165,5). Tanggal kosong memakai tanggal cek terjadwal. Kosongkan TB dan BB suatu periode untuk menghapus cek itu.</HowToTip>}
-      >
+      <Panel padding="flush" title={`Cek BMI ${scopeName}`}>
         {staffInView.length === 0 ? (
-          <div className="px-4 sm:px-6">
+          <div className="px-4">
             <EmptyState
               title={`Belum ada SDM di ${scopeName}`}
               action={
                 <ButtonLink href={links.sdm} variant="secondary">
-                  Buka Master SDM
+                  Buka Data SDM
                 </ButtonLink>
               }
             >
-              Cek BMI dicatat per SDM. Tambahkan SDM stasiun ini di Master SDM, lalu kembali ke sini.
+              Tambahkan SDM stasiun ini di Data SDM.
             </EmptyState>
           </div>
         ) : (
-          <div className="px-4 pb-4 sm:px-6 sm:pb-6">
+          <div className="px-4 pb-4">
             <BmiGrid
-              caption={`Cek BMI 2 mingguan, ${scopeName}`}
+              caption={`Cek BMI, ${scopeName}`}
               rows={gridRows}
               accessKey={access.key}
               plannedDates={plannedDates}
@@ -256,7 +250,7 @@ export function BmiScreen({ access, ws, searchParams: query }: ScreenProps) {
               summary={`${staffInView.length} SDM · ${view.checked} sudah dicek periode ${period}`}
               emptyState={<p className="text-sm text-ink-muted">Tidak ada SDM yang cocok dengan pencarian.</p>}
               phone={
-                <ol className="-mx-4 flex flex-col divide-y divide-line border-t border-line sm:-mx-6">
+                <ol className="-mx-4 flex flex-col divide-y divide-line border-t border-line">
                   {staffInView.map((st) => {
                     const checks = checksByStaff.get(st.code) ?? [];
                     const current = checks.find((c) => c.period === period);
@@ -301,7 +295,7 @@ export function BmiScreen({ access, ws, searchParams: query }: ScreenProps) {
       {standardMissing || missingGender > 0 ? (
         <section
           aria-label="Catatan syarat tinggi badan"
-          className="rounded-panel border border-line bg-surface px-4 py-3 text-sm sm:px-6"
+          className="rounded-panel border border-line bg-surface px-4 py-3 text-sm"
         >
           <p className="font-semibold text-ink">Syarat tinggi badan</p>
           <ul className="mt-1 flex flex-col gap-0.5 text-ink">
@@ -317,13 +311,9 @@ export function BmiScreen({ access, ws, searchParams: query }: ScreenProps) {
       ) : null}
 
       {ws.isKps && !stationFilter ? (
-        <Panel
-          padding="flush"
-          title={`Kategori BMI periode ${period} per stasiun`}
-          description="Dihitung dari hasil cek periode ini, seperti bagian C Laporan Mingguan."
-        >
+        <Panel padding="flush" title={`Kategori BMI periode ${period} per stasiun`}>
           {view.checked === 0 ? (
-            <div className="px-4 sm:px-6">
+            <div className="px-4">
               <EmptyState title={`Belum ada hasil cek untuk periode ${period}`} layout="inline">
                 Jumlah per kategori muncul setelah stasiun menyimpan cek BMI periode ini.
               </EmptyState>

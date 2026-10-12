@@ -92,7 +92,7 @@ export function ProgrammePosition({ ws, settings: s, today, links, firstSteps }:
               <li>
                 Isi L/P untuk {firstSteps.noGender} SDM di{" "}
                 <Link href={links.sdm} className={linkClass}>
-                  Master SDM
+                  Data SDM
                 </Link>
                 , supaya syarat tinggi badan bisa dicek sejak cek BMI pertama.
               </li>
@@ -104,7 +104,7 @@ export function ProgrammePosition({ ws, settings: s, today, links, firstSteps }:
               </Link>
               , lalu isi nilai praktik Minggu ke-1 di{" "}
               <Link href={links.to("performa", { minggu: 1 })} className={linkClass}>
-                Log Performa
+                Penilaian Mingguan
               </Link>
               .
             </li>

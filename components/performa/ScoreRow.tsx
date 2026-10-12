@@ -204,14 +204,14 @@ export function ScoreRow({ accessKey, week, settings, staff, defaultObserver, sa
   const notActive = staff.assignmentStatus && staff.assignmentStatus !== "Aktif";
 
   return (
-    <li className="group border-b border-line px-4 py-4 focus-within:bg-brand-tint nav:px-0 nav:py-1.5">
+    <li className="group border-b border-line px-4 py-4 focus-within:bg-brand-tint grid:px-0 grid:py-1.5">
       <form onSubmit={onSubmit} noValidate>
         <div role="group" aria-labelledby={nameId} className={ROW_GRID}>
           <div
             className={cx(
               CELL.name,
               STICKY_FIRST,
-              "flex flex-col justify-center gap-0.5 bg-transparent nav:bg-surface nav:group-focus-within:bg-brand-tint",
+              "flex flex-col justify-center gap-0.5 bg-transparent grid:bg-surface grid:group-focus-within:bg-brand-tint",
             )}
           >
             <p id={nameId} className="text-sm font-semibold text-ink">
@@ -229,7 +229,7 @@ export function ScoreRow({ accessKey, week, settings, staff, defaultObserver, sa
             const bad = parsed[i] === "invalid" || serverIndex === i;
             return (
               <div key={aspect.key} className={cx(CELL.score, "flex flex-col justify-end gap-1")}>
-                <label htmlFor={inputId} className="text-xs font-semibold text-ink nav:sr-only">
+                <label htmlFor={inputId} className="text-xs font-semibold text-ink grid:sr-only">
                   {`${aspect.letter} ${aspect.name}`}
                 </label>
                 <NumberInput
@@ -249,10 +249,10 @@ export function ScoreRow({ accessKey, week, settings, staff, defaultObserver, sa
             );
           })}
 
-          <div className={cx(CELL.result, "flex flex-wrap items-center gap-x-3 gap-y-1 nav:flex-col nav:items-start nav:gap-1")}>
+          <div className={cx(CELL.result, "flex flex-wrap items-center gap-x-3 gap-y-1 grid:flex-col grid:items-start grid:gap-1")}>
             {avg !== null ? (
               <p className="text-sm tabular-nums">
-                <span className="text-ink-muted nav:sr-only">Rata-rata </span>
+                <span className="text-ink-muted grid:sr-only">Rata-rata </span>
                 <span className="font-semibold text-ink">{formatScore(avg)}</span>
                 {delta !== null ? (
                   <span className="ml-2 text-xs text-ink-muted">
@@ -267,7 +267,7 @@ export function ScoreRow({ accessKey, week, settings, staff, defaultObserver, sa
           </div>
 
           <div className={cx(CELL.observer, "flex flex-col gap-1")}>
-            <label htmlFor={`${id}-observer`} className="text-xs font-semibold text-ink nav:sr-only">
+            <label htmlFor={`${id}-observer`} className="text-xs font-semibold text-ink grid:sr-only">
               Pengamat
             </label>
             <Input
@@ -282,7 +282,7 @@ export function ScoreRow({ accessKey, week, settings, staff, defaultObserver, sa
           </div>
 
           <div className={cx(CELL.notes, "flex flex-col gap-1")}>
-            <label htmlFor={`${id}-notes`} className="text-xs font-semibold text-ink nav:sr-only">
+            <label htmlFor={`${id}-notes`} className="text-xs font-semibold text-ink grid:sr-only">
               Catatan coaching
             </label>
             <Input
@@ -295,7 +295,7 @@ export function ScoreRow({ accessKey, week, settings, staff, defaultObserver, sa
             />
           </div>
 
-          <div className={cx(CELL.save, "flex flex-wrap items-center gap-x-3 gap-y-1 nav:flex-col nav:items-start nav:gap-0.5 nav:pr-3")}>
+          <div className={cx(CELL.save, "flex flex-wrap items-center gap-x-3 gap-y-1 grid:flex-col grid:items-start grid:gap-0.5 grid:pr-3")}>
             <Button
               type="submit"
               size="sm"
@@ -309,12 +309,12 @@ export function ScoreRow({ accessKey, week, settings, staff, defaultObserver, sa
             {dirty && !saving && saveState.status !== "error" ? (
               <span className="text-xs font-semibold text-warning">Belum disimpan</span>
             ) : null}
-            <SaveStatus state={saveState} className="nav:min-h-0" />
+            <SaveStatus state={saveState} className="grid:min-h-0" />
           </div>
 
           {message ? (
-            <p id={messageId} className={cx(CELL.message, "text-sm font-medium text-critical nav:pt-1 nav:pb-1")}>
-              <span className="nav:sticky nav:left-3 nav:inline-block">{message}</span>
+            <p id={messageId} className={cx(CELL.message, "text-sm font-semibold text-critical grid:pt-1 grid:pb-1")}>
+              <span className="grid:sticky grid:left-3 grid:inline-block">{message}</span>
             </p>
           ) : null}
         </div>

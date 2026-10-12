@@ -6,7 +6,8 @@ import { reportGroupOf } from "@/lib/rules";
 import { hrefs, stationCodes, trackerData, type Workspace, type WorkspaceAccess } from "@/lib/workspace";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Panel } from "@/components/ui/Panel";
-import { StationFilter } from "@/components/ui/StationFilter";
+import { StationSelect } from "@/components/ui/StationSelect";
+import { ALL_STATIONS } from "@/components/ui/url-options";
 import { AttentionPanel } from "./AttentionPanel";
 import { ProgrammePosition } from "./ProgrammePosition";
 import { KpiGrid, StationCards } from "./StationCards";
@@ -58,15 +59,14 @@ export function RingkasanView({ ws, access, today, stationFilter }: RingkasanVie
   return (
     <div className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
-        title="Dashboard"
-        context={ws.scopeLabel}
-        description={`Posisi per ${asOf}: posisi program, angka utama, yang perlu ditangani, lalu perbandingan stasiun.`}
+        title="Beranda"
+        meta={`${ws.scopeLabel} · per ${asOf}`}
       >
         {ws.isKps ? (
-          <StationFilter
-            current={stationFilter}
+          <StationSelect
+            current={stationFilter ?? ALL_STATIONS}
             options={[null, ...allStations].map((code) => ({
-              code,
+              value: code ?? ALL_STATIONS,
               label: code ?? "Semua stasiun",
               href: links.to("dashboard", { stasiun: code }),
             }))}
@@ -131,7 +131,7 @@ export function RingkasanView({ ws, access, today, stationFilter }: RingkasanVie
       </section>
 
       <details className="group rounded-panel border border-line bg-surface">
-        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-panel px-4 py-3 sm:px-6 [&::-webkit-details-marker]:hidden">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-panel px-4 py-3 [&::-webkit-details-marker]:hidden">
           <span className="min-w-0">
             <span className="block text-lg font-semibold text-ink">Detail per bagian</span>
             <span className="block text-sm text-ink-muted">
@@ -145,11 +145,10 @@ export function RingkasanView({ ws, access, today, stationFilter }: RingkasanVie
           </span>
         </summary>
 
-        <div className="flex flex-col gap-4 border-t border-line bg-paper p-3 sm:p-4">
+        <div className="flex flex-col gap-4 border-t border-line bg-bg p-3 sm:p-4">
           <Panel
             headingLevel={3}
-            title="1. Progres tindak lanjut per laporan"
-            description={sharedGroup ? `Laporan ${sharedGroup} dipakai bersama stasiun CGK dan HLP.` : undefined}
+            title={sharedGroup ? `1. Progres tindak lanjut, laporan ${sharedGroup}` : "1. Progres tindak lanjut per laporan"}
             padding="flush"
           >
             <ActionProgressTable caption="Progres tindak lanjut per laporan" rows={withoutTotals(dash.actionProgress, single)} />
@@ -209,6 +208,6 @@ export function RingkasanView({ ws, access, today, stationFilter }: RingkasanVie
 
 function Footnotes({ children }: { children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-1 border-t border-line px-4 py-3 text-xs text-ink-muted sm:px-6">{children}</div>
+    <div className="flex flex-col gap-1 border-t border-line px-4 py-3 text-xs text-ink-muted">{children}</div>
   );
 }

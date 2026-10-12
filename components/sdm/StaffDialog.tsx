@@ -211,7 +211,7 @@ function StaffForm({
   return (
     <form ref={formRef} id={formId} onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
       {formError ? (
-        <p role="alert" className="rounded-control bg-critical-tint px-3 py-2 text-sm font-medium text-critical">
+        <p role="alert" className="rounded-control bg-critical-tint px-3 py-2 text-sm font-semibold text-critical">
           {formError}
         </p>
       ) : null}
@@ -322,7 +322,7 @@ function StaffForm({
               <dd className="font-semibold tabular-nums">{formatScore(preview.practiceAvg) || "Belum ada nilai"}</dd>
             </div>
             <div>
-              <dt className="section-label">Status kriteria 6.2</dt>
+              <dt className="section-label">Status kriteria kelulusan</dt>
               <dd>
                 <StatusChip label={preview.criteriaStatus} />
               </dd>
@@ -350,7 +350,7 @@ function StaffForm({
               onClose();
               onDelete(row);
             }}
-            className="inline-flex min-h-11 items-center justify-center rounded-control px-3 text-sm font-semibold text-critical transition-colors duration-150 hover:bg-critical-tint sm:mr-auto sm:min-h-10"
+            className="inline-flex min-h-11 items-center justify-center rounded-control px-3 text-sm font-semibold text-critical transition-colors duration-120 hover:bg-critical-tint sm:mr-auto sm:min-h-10"
           >
             Hapus SDM
           </button>

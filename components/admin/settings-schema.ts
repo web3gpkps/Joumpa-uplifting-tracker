@@ -1,6 +1,5 @@
 /**
- * Parameter (public.settings, id = 1): labels and help from the workbook's sheet
- * "Parameter" (columns B and D), and validation that mirrors the table's CHECK
+ * Parameter (public.settings, id = 1): labels, short help, and validation that mirrors the table's CHECK
  * constraints (supabase/migrations/*_stations_settings.sql), so the form says what the
  * database would refuse before it is sent. Pure: used by the form and the Server Action.
  */
@@ -27,14 +26,13 @@ export type SettingKind = "date" | "int" | "decimal" | "optional-decimal";
 export type SettingField = {
   key: SettingKey;
   kind: SettingKind;
-  /** Column B of sheet Parameter. */
   label: string;
-  /** Column D ("Keterangan / sumber"), plus the allowed range. */
+  /** One short line: the allowed range or what the value is used for. */
   help: string;
   unit?: string;
 };
 
-export type SettingSection = { id: string; title: string; description?: string; fields: SettingField[] };
+export type SettingSection = { id: string; title: string; fields: SettingField[] };
 
 export const SETTING_SECTIONS: SettingSection[] = [
   {
@@ -45,13 +43,13 @@ export const SETTING_SECTIONS: SettingSection[] = [
         key: "week1_start",
         kind: "date",
         label: "Tanggal mulai Minggu ke-1 (Senin)",
-        help: "Minggu pertama setelah laporan training dikirim (1–3 Okt 2026).",
+        help: "Minggu berikutnya dihitung dari tanggal ini.",
       },
       {
         key: "weeks",
         kind: "int",
         label: "Jumlah minggu pemantauan",
-        help: "Mg 1 (12 Okt) s.d. Mg 10 (14 Des), mencakup evaluasi ulang KPS minggu ke-2 Des 2026. Rentang 1 sampai 20.",
+        help: "1 sampai 20.",
         unit: "minggu",
       },
     ],
@@ -64,20 +62,20 @@ export const SETTING_SECTIONS: SettingSection[] = [
         key: "bmi_first_check",
         kind: "date",
         label: "Tanggal cek BMI periode 1",
-        help: "Cek BMI, tinggi & berat badan.",
+        help: "Periode berikutnya dihitung dari tanggal ini.",
       },
       {
         key: "bmi_interval_days",
         kind: "int",
         label: "Interval cek BMI (hari)",
-        help: "Per 2 minggu sesuai permintaan. Rentang 1 sampai 90 hari.",
+        help: "1 sampai 90 hari.",
         unit: "hari",
       },
       {
         key: "bmi_periods",
         kind: "int",
         label: "Jumlah periode cek BMI",
-        help: "12 Okt, 26 Okt, 9 Nov, 23 Nov, 7 Des 2026. Rentang 1 sampai 10.",
+        help: "1 sampai 10.",
         unit: "kali",
       },
     ],
@@ -85,20 +83,19 @@ export const SETTING_SECTIONS: SettingSection[] = [
   {
     id: "klasifikasi-bmi",
     title: "Klasifikasi BMI",
-    description: "Harus berurutan: batas Kurus ≤ batas Normal ≤ batas Overweight ≤ 100.",
     fields: [
       {
         key: "bmi_underweight_below",
         kind: "decimal",
         label: "BMI kategori Kurus jika <",
-        help: "Klasifikasi IMT Kemenkes RI (P2PTM): Kurus <18,5.",
+        help: "Klasifikasi IMT Kemenkes RI.",
       },
-      { key: "bmi_normal_max", kind: "decimal", label: "BMI Normal s.d.", help: "Normal 18,5–25,0." },
+      { key: "bmi_normal_max", kind: "decimal", label: "BMI Normal s.d.", help: "Tidak di bawah batas Kurus." },
       {
         key: "bmi_overweight_max",
         kind: "decimal",
         label: "BMI Overweight s.d. (di atasnya Obesitas)",
-        help: "Gemuk/Overweight >25,0–27,0; Obesitas >27,0.",
+        help: "Tidak di bawah batas Normal, paling tinggi 100.",
       },
     ],
   },
@@ -110,14 +107,14 @@ export const SETTING_SECTIONS: SettingSection[] = [
         key: "min_height_female",
         kind: "optional-decimal",
         label: "Tinggi minimal petugas Perempuan (cm)",
-        help: "Isi sesuai ketentuan rekrutmen/spesifikasi JOUMPA. Dibiarkan kosong karena standar belum tercantum di laporan. Rentang 120 sampai 210 cm.",
+        help: "120 sampai 210 cm. Kosong: syarat tinggi belum dinilai.",
         unit: "cm",
       },
       {
         key: "min_height_male",
         kind: "optional-decimal",
         label: "Tinggi minimal petugas Laki-laki (cm)",
-        help: "Isi sesuai ketentuan rekrutmen/spesifikasi JOUMPA. Rentang 120 sampai 210 cm.",
+        help: "120 sampai 210 cm. Kosong: syarat tinggi belum dinilai.",
         unit: "cm",
       },
     ],
@@ -130,19 +127,19 @@ export const SETTING_SECTIONS: SettingSection[] = [
         key: "pass_avg_min",
         kind: "decimal",
         label: "Rata-rata praktik minimal Sesuai",
-        help: "Kriteria kelulusan butir 6.2 laporan. Rentang 1 sampai 5.",
+        help: "1 sampai 5.",
       },
       {
         key: "improve_avg_min",
         kind: "decimal",
         label: "Rata-rata praktik minimal Perlu Perbaikan",
-        help: "Di bawah ini = Tidak Sesuai Spesifikasi. Rentang 1 sampai 5, tidak boleh di atas batas Sesuai.",
+        help: "Di bawahnya Tidak Sesuai. 1 sampai 5, tidak di atas batas Sesuai.",
       },
       {
         key: "posttest_min",
         kind: "decimal",
         label: "Post-test minimal",
-        help: "Kriteria kelulusan butir 6.2 laporan (SUB tidak ada post-test). Rentang 0 sampai 100.",
+        help: "0 sampai 100.",
       },
     ],
   },
@@ -154,7 +151,7 @@ export const SETTING_SECTIONS: SettingSection[] = [
         key: "replacement_deadline",
         kind: "date",
         label: "Batas waktu penggantian SDM",
-        help: "Lembar komitmen di sheet Penggantian SDM: batas 31 Oktober 2026. Dipakai untuk status Ketepatan Waktu.",
+        help: "Dipakai untuk status ketepatan waktu.",
       },
     ],
   },

@@ -25,8 +25,8 @@ import { ButtonLink } from "@/components/ui/Button";
 import { PageHeader, PageLoading } from "@/components/ui/PageHeader";
 import { Panel } from "@/components/ui/Panel";
 import { EmptyState, ErrorState } from "@/components/ui/States";
-import { StationFilter } from "@/components/ui/StationFilter";
-import { HowToTip } from "@/components/ui/HowToTip";
+import { StationSelect } from "@/components/ui/StationSelect";
+import { ALL_STATIONS } from "@/components/ui/url-options";
 import { RememberView } from "@/components/ui/RememberView";
 import { rememberScope } from "@/components/ui/remember";
 import { StatusChip, toneForStatus } from "@/components/ui/StatusChip";
@@ -87,7 +87,7 @@ export function PenggantianScreen({ access, ws, searchParams: query }: ScreenPro
   if (!settingsComplete(ws.settings)) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title={TITLE} context={ws.scopeLabel} />
+        <PageHeader title={TITLE} meta={ws.scopeLabel} />
         <Panel>
           <ErrorState
             title="Parameter penggantian belum terbaca"
@@ -133,17 +133,10 @@ export function PenggantianScreen({ access, ws, searchParams: query }: ScreenPro
       <div className="flex flex-col gap-6">
         <PageHeader
           title={TITLE}
-          context={ws.scopeLabel}
-          description={
-            <>
-              Komitmen: SDM yang tidak memenuhi spesifikasi diganti paling lambat{" "}
-              {formatTanggal(settings.replacementDeadline)}. Pengganti baru boleh bertugas setelah lulus training:
-              post-test minimal {minPost} dan rata-rata praktik minimal {minAvg}.
-            </>
-          }
+          meta={`${ws.scopeLabel} · Batas ${formatTanggal(settings.replacementDeadline)} · lulus: post-test ≥ ${minPost}, rata-rata praktik ≥ ${minAvg}`}
           actions={
             // With rows, desktop adds through the grid toolbar ("Tambah baris"); phones keep this button.
-            <div className={rows.length > 0 ? "nav:hidden" : undefined}>
+            <div className={rows.length > 0 ? "grid:hidden" : undefined}>
               <AddReplacementButton ctx={ctx} />
             </div>
           }
@@ -152,15 +145,13 @@ export function PenggantianScreen({ access, ws, searchParams: query }: ScreenPro
             <RememberView scope={rememberScope(access, ws)} allowed={{ stasiun: stations }} shown={{ stasiun: stationFilter }} />
           ) : null}
           {ws.isKps ? (
-            <StationFilter
-              current={stationFilter}
+            <StationSelect
+              current={stationFilter ?? ALL_STATIONS}
               options={[null, ...stations].map((code) => {
                 const count = code ? ws.replacements.filter((r) => r.station === code).length : ws.replacements.length;
                 return {
-                  code,
-                  label: code ?? "Semua stasiun",
-                  meta: String(count),
-                  metaLabel: `${count} penggantian`,
+                  value: code ?? ALL_STATIONS,
+                  label: `${code ?? "Semua stasiun"} · ${count} penggantian`,
                   href: href(code),
                 };
               })}
@@ -187,12 +178,8 @@ export function PenggantianScreen({ access, ws, searchParams: query }: ScreenPro
             </EmptyState>
           </Panel>
         ) : (
-          <Panel
-            padding="flush"
-            title={`Penggantian SDM, ${scopeName}`}
-            description={<HowToTip id="penggantian">ketik langsung di sel kuning, baris tersimpan sendiri. Pilih ID SDM dari Master SDM untuk mengisi nama otomatis.</HowToTip>}
-          >
-            <div className="px-4 pb-4 sm:px-6 sm:pb-6">
+          <Panel padding="flush" title={`Penggantian SDM, ${scopeName}`}>
+            <div className="px-4 pb-4">
               <ReplacementGrid
                 caption={`Penggantian SDM, ${scopeName}`}
                 rows={gridRows}
@@ -200,7 +187,7 @@ export function PenggantianScreen({ access, ws, searchParams: query }: ScreenPro
                 summary={`${rows.length} penggantian · ${rows.filter((r) => replacementPass(r, settings)?.startsWith("Lulus")).length} pengganti lulus`}
                 actions={<AddReplacementButton ctx={ctx} label="Tambah baris" />}
                 phone={
-                  <ol className="-mx-4 flex flex-col gap-4 sm:-mx-6" aria-label={`Daftar penggantian ${scopeName}`}>
+                  <ol className="-mx-4 flex flex-col gap-4" aria-label={`Daftar penggantian ${scopeName}`}>
                     {rows.map((row) => (
                       <li key={row.id}>
                         <ReplacementCard row={row} ws={ws} ctx={ctx} settings={settings} today={today} />
@@ -263,7 +250,7 @@ function OnTrackSummary({
   return (
     <section
       aria-label="Apakah penggantian sesuai jadwal"
-      className="grid gap-4 rounded-panel border border-line bg-surface px-4 py-4 sm:px-6 sm:py-5 md:grid-cols-[minmax(12rem,auto)_minmax(0,1fr)] md:gap-8"
+      className="grid gap-4 rounded-panel border border-line bg-surface px-4 py-4 sm:py-5 md:grid-cols-[minmax(12rem,auto)_minmax(0,1fr)] md:gap-8"
     >
       <div className="flex flex-col gap-0.5">
         <p className="text-2xl font-semibold text-ink tabular-nums">{deadline.big}</p>
@@ -355,7 +342,7 @@ function ReplacementCard({
       aria-labelledby={`penggantian-${row.id}`}
       className="flex flex-col rounded-panel border border-line bg-surface"
     >
-      <header className="flex flex-col gap-3 px-4 pt-4 sm:px-6 sm:pt-5 md:flex-row md:items-start md:justify-between">
+      <header className="flex flex-col gap-3 px-4 pt-4 sm:pt-5 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <p className="section-label">SDM diganti</p>
           <h2 id={`penggantian-${row.id}`} className="text-lg font-semibold text-ink [overflow-wrap:anywhere]">
@@ -379,7 +366,7 @@ function ReplacementCard({
         </dl>
       </header>
 
-      <div className="grid gap-6 px-4 py-4 sm:px-6 md:grid-cols-2 md:gap-8">
+      <div className="grid gap-6 px-4 py-4 md:grid-cols-2 md:gap-8">
         <section aria-label="Yang diganti" className="flex flex-col gap-3">
           <DetailList
             items={[
@@ -412,7 +399,7 @@ function ReplacementCard({
         </section>
       </div>
 
-      <footer className="flex flex-col gap-2 border-t border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <footer className="flex flex-col gap-2 border-t border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-ink-muted">{lastChangedLabel(row, ws)}</p>
         <ReplacementRowActions ctx={ctx} row={formRow} />
       </footer>

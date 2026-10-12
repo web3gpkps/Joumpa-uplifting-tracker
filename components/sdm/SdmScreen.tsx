@@ -15,7 +15,8 @@ import {
 import { PageHeader, PageLoading } from "@/components/ui/PageHeader";
 import { Panel } from "@/components/ui/Panel";
 import { ButtonLink } from "@/components/ui/Button";
-import { StationFilter, type StationFilterOption } from "@/components/ui/StationFilter";
+import { StationSelect } from "@/components/ui/StationSelect";
+import { ALL_STATIONS, type UrlOption } from "@/components/ui/url-options";
 import { RememberView } from "@/components/ui/RememberView";
 import { rememberScope } from "@/components/ui/remember";
 import { FlagSummary, type FlagItem } from "@/components/sdm/FlagSummary";
@@ -24,7 +25,7 @@ import { AddStaffButton } from "@/components/sdm/AddStaffButton";
 import type { SdmRow } from "@/components/sdm/types";
 import { deleteStaff, saveStaff, saveStaffGender } from "./actions";
 
-const TITLE = "Master SDM";
+const TITLE = "Data SDM";
 
 export function SdmLoading() {
   return <PageLoading title={TITLE} label="Memuat daftar SDM" />;
@@ -123,7 +124,7 @@ export function SdmScreen({ access, ws, searchParams: sp }: ScreenProps) {
       key: "beda",
       count: count("beda"),
       title: "Beda – verifikasi",
-      detail: "Kesimpulan di laporan pelatihan tidak sama dengan status menurut kriteria 6.2. Cocokkan dengan laporan.",
+      detail: "Kesimpulan di laporan pelatihan tidak sama dengan kriteria kelulusan. Cocokkan dengan laporan.",
       links: [filterLink("beda", "Tampilkan")],
       active: query.check === "beda",
     },
@@ -157,12 +158,10 @@ export function SdmScreen({ access, ws, searchParams: sp }: ScreenProps) {
     },
   ];
 
-  const stationOptions: StationFilterOption[] = ws.isKps
+  const stationOptions: UrlOption[] = ws.isKps
     ? [null, ...stations].map((code) => ({
-        code,
-        label: code ?? "Semua stasiun",
-        meta: String(code ? allStaff.filter((s) => s.station === code).length : allStaff.length),
-        metaLabel: `${code ? allStaff.filter((s) => s.station === code).length : allStaff.length} SDM`,
+        value: code ?? ALL_STATIONS,
+        label: `${code ?? "Semua stasiun"} · ${code ? allStaff.filter((s) => s.station === code).length : allStaff.length} SDM`,
         href: hrefFor(access, { ...query, station: code }),
       }))
     : [];
@@ -173,8 +172,7 @@ export function SdmScreen({ access, ws, searchParams: sp }: ScreenProps) {
     <div className="flex flex-col gap-6">
       <PageHeader
         title={TITLE}
-        context={ws.scopeLabel}
-        description="Master SDM: data tiap SDM dan hasil pelatihannya. Periksa apakah datanya benar dan apakah SDM memenuhi kriteria 6.2."
+        meta={`${ws.scopeLabel} · ${activeFlag ? `${rows.length} dari ${scopeRows.length} SDM: ${activeFlag.title}` : `${scopeRows.length} SDM`}`}
         actions={
           <AddStaffButton
             accessKey={access.key}
@@ -187,23 +185,18 @@ export function SdmScreen({ access, ws, searchParams: sp }: ScreenProps) {
         }
       >
         {stationOptions.length > 0 ? (
-          <StationFilter options={stationOptions} current={query.station} />
+          <StationSelect options={stationOptions} current={query.station ?? ALL_STATIONS} />
         ) : null}
         {ws.isKps ? (
           <RememberView scope={rememberScope(access, ws)} allowed={{ stasiun: stations }} shown={{ stasiun: query.station }} />
         ) : null}
       </PageHeader>
 
-      <FlagSummary items={flags} scopeName={scopeName} />
+      <FlagSummary items={flags} />
 
       <Panel
         padding="flush"
-        title={`Master SDM, ${scopeName}`}
-        description={
-          activeFlag
-            ? `Menampilkan ${rows.length} dari ${scopeRows.length} SDM: ${activeFlag.title}.`
-            : `${scopeRows.length} SDM. ${ws.isKps ? "Data pelatihan bisa diubah lewat tombol Ubah." : "Data pelatihan hanya bisa diubah lewat tautan KPS."}`
-        }
+        title={`Data SDM, ${scopeName}`}
         actions={
           activeFlag ? (
             <ButtonLink size="sm" href={hrefFor(access, { ...query, check: null })}>
@@ -213,7 +206,7 @@ export function SdmScreen({ access, ws, searchParams: sp }: ScreenProps) {
         }
       >
         <StaffGrid
-          caption={`Master SDM ${scopeName}`}
+          caption={`Data SDM ${scopeName}`}
           rows={rows}
           emptyTitle={
             activeFlag ? `Tidak ada SDM dengan ${activeFlag.title} di ${scopeName}` : `Belum ada SDM di ${scopeName}`

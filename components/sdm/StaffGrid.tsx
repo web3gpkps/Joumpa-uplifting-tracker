@@ -45,7 +45,7 @@ const rowLabel = (r: SdmRow) => `${r.code}, ${r.name}`;
 const SEARCH = { placeholder: "Nama atau ID", text: (r: SdmRow) => `${r.code} ${r.name} ${r.nipp ?? ""}` };
 
 function chip(value: CellValue) {
-  return value ? <StatusChip label={String(value)} bordered /> : null;
+  return value ? <StatusChip label={String(value)} /> : null;
 }
 
 /**
@@ -85,7 +85,7 @@ export function StaffGrid(props: StaffGridProps) {
           row.duplicateNippWith.length > 0 ? (
             <span className="flex items-center gap-1.5">
               <span className="tabular-nums">{value}</span>
-              <StatusChip tone="warning" label="ganda" bordered />
+              <StatusChip label="ganda" />
             </span>
           ) : (
             <span className="tabular-nums">{value}</span>
@@ -159,7 +159,7 @@ export function StaffGrid(props: StaffGridProps) {
               type="button"
               tabIndex={-1}
               onClick={() => setDeleting(row)}
-              className="inline-flex min-h-8 items-center rounded-control px-2 text-xs font-semibold text-critical transition-colors duration-150 hover:bg-critical-tint"
+              className="inline-flex min-h-8 items-center rounded-control px-2 text-xs font-semibold text-critical transition-colors duration-120 hover:bg-critical-tint"
             >
               Hapus<span className="sr-only"> SDM {row.name}</span>
             </button>
@@ -208,7 +208,7 @@ export function StaffGrid(props: StaffGridProps) {
   const assessed = rows.filter((r) => r.practiceAvg !== null).length;
 
   return (
-    <div className="flex flex-col gap-3 px-4 pb-4 sm:px-6 sm:pb-6">
+    <div className="flex flex-col gap-3 px-4 pb-4">
       <div role="status" aria-live="polite">
         {message ? <p className="text-sm font-semibold text-good">{message}</p> : null}
       </div>

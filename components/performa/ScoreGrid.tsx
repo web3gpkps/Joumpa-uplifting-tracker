@@ -80,7 +80,7 @@ export function ScoreGrid({ caption, rows, week, settings, accessKey, saveAction
           row.assignmentStatus && row.assignmentStatus !== "Aktif" ? (
             <span className="flex items-center gap-1.5">
               <span className="truncate">{value}</span>
-              <StatusChip label={row.assignmentStatus} bordered />
+              <StatusChip label={row.assignmentStatus} />
             </span>
           ) : (
             value
@@ -114,7 +114,7 @@ export function ScoreGrid({ caption, rows, week, settings, accessKey, saveAction
         width: 136,
         editor: "readonly",
         derive: (_row, value) => weeklyStatus(avgOf(value), settings),
-        render: (value) => <StatusChip label={value ? String(value) : null} emptyLabel="Belum dinilai" bordered />,
+        render: (value) => <StatusChip label={value ? String(value) : null} emptyLabel="Belum dinilai" />,
       },
       {
         key: "delta",

@@ -43,7 +43,7 @@ function scheduleOf(values: SettingsValues): Settings | null {
 }
 
 /**
- * Parameter form: every settings column with the workbook's labels and help, checked
+ * Parameter form: every settings column with its label and short help, checked
  * like the database checks it, saved in one update. Typed values survive a failed save.
  */
 export function SettingsForm({ initial, genderMissing }: SettingsFormProps) {
@@ -102,7 +102,7 @@ export function SettingsForm({ initial, genderMissing }: SettingsFormProps) {
 
   function note(key: SettingKey) {
     if ((key === "week1_start" || key === "bmi_first_check") && notMonday(values[key])) {
-      return <p className="text-sm text-warning">Tanggal ini bukan Senin. Workbook memakai hari Senin.</p>;
+      return <p className="text-sm text-warning">Tanggal ini bukan hari Senin.</p>;
     }
     return null;
   }
@@ -110,19 +110,18 @@ export function SettingsForm({ initial, genderMissing }: SettingsFormProps) {
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
       {SETTING_SECTIONS.map((section) => (
-        <Panel key={section.id} id={`param-${section.id}`} title={section.title} description={section.description}>
+        <Panel key={section.id} id={`param-${section.id}`} title={section.title}>
           <div className="flex flex-col gap-4">
             {section.id === "tinggi-badan" && heightsMissing ? (
-              <div role="note" className="rounded-control border border-warning bg-warning-tint p-3 text-sm text-ink">
-                <p className="font-semibold text-warning">Standar tinggi minimal belum lengkap</p>
-                <p className="mt-1">
-                  Selama tinggi minimal Perempuan dan Laki-laki belum diisi, kolom Syarat Tinggi Badan di Cek BMI
-                  menampilkan &ldquo;Isi standar di Parameter&rdquo; dan tidak menilai Memenuhi atau Tidak Memenuhi.
-                  {genderMissing && genderMissing.missing > 0
-                    ? ` Syarat ini juga butuh L/P setiap SDM: ${genderMissing.missing} dari ${genderMissing.total} SDM belum punya L/P.`
-                    : ""}
-                </p>
-              </div>
+              <p role="note" className="text-sm text-ink">
+                <span className="rounded-status bg-warning-tint px-1.5 py-0.5 text-xs font-semibold text-warning">
+                  Belum lengkap
+                </span>{" "}
+                Syarat tinggi belum dinilai sampai kedua tinggi minimal diisi.
+                {genderMissing && genderMissing.missing > 0
+                  ? ` ${genderMissing.missing} dari ${genderMissing.total} SDM belum punya L/P.`
+                  : ""}
+              </p>
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {section.fields.map((field) => (
@@ -158,7 +157,7 @@ export function SettingsForm({ initial, genderMissing }: SettingsFormProps) {
         </Panel>
       ))}
 
-      <div className="flex flex-col gap-3 rounded-panel border border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="flex flex-col gap-3 rounded-panel border border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <p className="text-sm text-ink">
             {dirty ? "Ada perubahan yang belum disimpan." : "Belum ada perubahan."} Perubahan langsung dipakai

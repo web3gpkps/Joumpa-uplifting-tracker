@@ -34,9 +34,9 @@ export function StaffCards({ rows, emptyTitle, emptyHint, accessKey, saveGenderA
     );
   }
   return (
-    <ul className="-mx-4 border-t border-line sm:-mx-6">
+    <ul className="-mx-4 border-t border-line">
       {rows.map((row) => (
-        <li key={row.code} className="flex flex-col gap-3 border-b border-line px-4 py-4 sm:px-6">
+        <li key={row.code} className="flex flex-col gap-3 border-b border-line px-4 py-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
               <h3 className="text-base font-semibold text-ink">{row.name}</h3>
@@ -45,9 +45,9 @@ export function StaffCards({ rows, emptyTitle, emptyHint, accessKey, saveGenderA
               </p>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {row.criteriaStatus ? <StatusChip label={row.criteriaStatus} bordered /> : null}
-              {row.consistency === "Beda – verifikasi" ? <StatusChip label={row.consistency} bordered /> : null}
-              {row.assignmentStatus !== "Aktif" ? <StatusChip label={row.assignmentStatus} bordered /> : null}
+              {row.criteriaStatus ? <StatusChip label={row.criteriaStatus} /> : null}
+              {row.consistency === "Beda – verifikasi" ? <StatusChip label={row.consistency} /> : null}
+              {row.assignmentStatus !== "Aktif" ? <StatusChip label={row.assignmentStatus} /> : null}
             </div>
           </div>
 
@@ -56,7 +56,7 @@ export function StaffCards({ rows, emptyTitle, emptyHint, accessKey, saveGenderA
               <dt className="section-label">NIPP</dt>
               <dd className="flex flex-wrap items-center gap-1.5">
                 {row.nipp ? <span className="tabular-nums">{row.nipp}</span> : <span className="text-ink-muted">Belum diisi</span>}
-                {row.duplicateNippWith.length > 0 ? <StatusChip tone="warning" label="NIPP ganda" bordered /> : null}
+                {row.duplicateNippWith.length > 0 ? <StatusChip label="NIPP ganda" /> : null}
               </dd>
             </div>
             <div>
@@ -92,7 +92,7 @@ export function StaffCards({ rows, emptyTitle, emptyHint, accessKey, saveGenderA
               <button
                 type="button"
                 onClick={() => onDelete(row)}
-                className="inline-flex min-h-11 items-center rounded-control px-3 text-sm font-semibold text-critical transition-colors duration-150 hover:bg-critical-tint"
+                className="inline-flex min-h-11 items-center rounded-control px-3 text-sm font-semibold text-critical transition-colors duration-120 hover:bg-critical-tint"
               >
                 Hapus SDM<span className="sr-only"> {row.name}</span>
               </button>

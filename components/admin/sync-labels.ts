@@ -2,7 +2,7 @@
 
 export const TABLE_LABEL: Record<string, string> = {
   staff: "SDM",
-  weekly_scores: "Log Performa",
+  weekly_scores: "Penilaian Mingguan",
   bmi_checks: "Cek BMI",
   action_items: "Tindak Lanjut",
   replacements: "Penggantian SDM",
@@ -11,9 +11,9 @@ export const TABLE_LABEL: Record<string, string> = {
 };
 
 export const RESOLUTION_LABEL: Record<string, string> = {
-  "db-wins": "Database dipakai, nilai Sheet ditimpa",
-  "sheet-wins": "Nilai Sheet dipakai, nilai database ditimpa",
-  "rejected:invalid_value": "Ditolak: nilai di Sheet tidak valid",
+  "db-wins": "Database dipakai, nilai Google Sheet ditimpa",
+  "sheet-wins": "Nilai Google Sheet dipakai, nilai database ditimpa",
+  "rejected:invalid_value": "Ditolak: nilai di Google Sheet tidak valid",
   "rejected:required_missing": "Ditolak: kolom wajib kosong",
   "rejected:unknown_parent": "Ditolak: ID SDM tidak dikenal",
   "rejected:duplicate_key": "Ditolak: kunci baris ganda",

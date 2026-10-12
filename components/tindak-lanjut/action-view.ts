@@ -69,7 +69,7 @@ export type ActionView = {
   sortOrder: number;
   /** 0 OVERDUE, 1 due within 7 days, 2 on track / routine, 3 no due date, 4 done. */
   urgency: number;
-  /** "tautan ini", another link's label, or "pemilik / Google Sheet". */
+  /** "tautan ini", another link's label, or "pengelola". */
   lastChangedBy: string;
   /** "Diubah lewat tautan ini, 8 Okt 14.05". */
   changedLabel: string;

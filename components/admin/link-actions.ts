@@ -44,7 +44,7 @@ export async function createShareLink(scope: string, rawLabel: string): Promise<
 
   const { data, error } = await insertLink(scope, label);
   if (error || !data) {
-    return { ok: false, message: `Tautan belum dibuat: database menolak (${error?.message ?? "tanpa jawaban"}).` };
+    return { ok: false, message: "Tautan belum dibuat. Coba lagi." };
   }
   const url = `${await requestOrigin()}${linkAccess(data.token).basePath}`;
   refresh();
@@ -63,7 +63,7 @@ export async function revokeShareLink(id: string): Promise<LinkActionResult> {
     .is("revoked_at", null)
     .select("scope")
     .maybeSingle();
-  if (error) return { ok: false, message: `Tautan belum dicabut: database menolak (${error.message}).` };
+  if (error) return { ok: false, message: "Tautan belum dicabut. Coba lagi." };
   if (!data) return { ok: false, message: "Tautan ini sudah dicabut sebelumnya atau tidak ada lagi." };
   refresh();
   return { ok: true, message: `Tautan ${data.scope} dicabut.` };
@@ -82,14 +82,14 @@ export async function rotateShareLink(id: string): Promise<LinkActionResult> {
     .select("scope, label, revoked_at")
     .eq("id", id)
     .maybeSingle();
-  if (readError) return { ok: false, message: `Tautan lama tidak terbaca (${readError.message}).` };
+  if (readError) return { ok: false, message: "Tautan lama tidak terbaca. Coba lagi." };
   if (!old || old.revoked_at) return { ok: false, message: "Tautan ini sudah dicabut, jadi tidak bisa diganti." };
 
   const { data: created, error: createError } = await insertLink(old.scope, old.label);
   if (createError || !created) {
     return {
       ok: false,
-      message: `Tautan baru belum dibuat, tautan lama tetap aktif (${createError?.message ?? "tanpa jawaban"}).`,
+      message: "Tautan baru belum dibuat. Tautan lama tetap aktif.",
     };
   }
   const link = { scope: old.scope, label: old.label, url: `${await requestOrigin()}${linkAccess(created.token).basePath}` };
@@ -104,7 +104,7 @@ export async function rotateShareLink(id: string): Promise<LinkActionResult> {
     return {
       ok: true,
       link,
-      message: `Tautan baru dibuat, tetapi tautan lama belum tercabut (${revokeError.message}). Cabut tautan lama dari tabel.`,
+      message: "Tautan baru dibuat, tetapi tautan lama belum tercabut. Cabut tautan lama dari tabel.",
     };
   }
   return { ok: true, link, message: `Tautan ${old.scope} diganti. Tautan lama tidak berlaku lagi.` };

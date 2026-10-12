@@ -33,10 +33,10 @@ export function VerificationPanel({
     items.push(
       <Item
         key="beda"
-        text={`${v.beda.total} SDM ditandai “Beda – verifikasi”${perStation(v.beda.byStation, multiStation)}: kesimpulan di laporan pelatihan berbeda dari hasil hitung kriteria 6.2.`}
+        text={`${v.beda.total} SDM ditandai “Beda – verifikasi”${perStation(v.beda.byStation, multiStation)}: kesimpulan di laporan pelatihan berbeda dari kriteria kelulusan.`}
         link={
           <Link href={links.sdm} className={linkClass}>
-            Periksa {v.beda.total} SDM di Master SDM
+            Periksa {v.beda.total} SDM di Data SDM
           </Link>
         }
       />,
@@ -50,7 +50,7 @@ export function VerificationPanel({
         text={`${v.noGender.total} SDM belum diisi L/P${perStation(v.noGender.byStation, multiStation)}, jadi syarat tinggi badan belum bisa dicek untuk mereka.`}
         link={
           <Link href={links.sdm} className={linkClass}>
-            Isi L/P di Master SDM
+            Isi L/P di Data SDM
           </Link>
         }
       />,
@@ -75,7 +75,7 @@ export function VerificationPanel({
         text={`NIPP ${d.nipp} dipakai ${d.staff.length} SDM: ${names.join(" dan ")}.`}
         link={
           <Link href={links.sdm} className={linkClass}>
-            Periksa NIPP {d.nipp} di Master SDM
+            Periksa NIPP {d.nipp} di Data SDM
           </Link>
         }
       />,
@@ -86,11 +86,10 @@ export function VerificationPanel({
     <Panel
       id="perlu-diverifikasi"
       title="Perlu diverifikasi"
-      description="Data dari laporan pelatihan dan daftar SDM yang belum cocok. Ditampilkan apa adanya sampai diperiksa."
     >
       {items.length === 0 ? (
         <EmptyState title="Tidak ada data yang perlu diverifikasi" layout="inline">
-          Kesimpulan laporan cocok dengan kriteria 6.2, L/P terisi, standar tinggi sudah ada, dan tidak ada NIPP ganda.
+          Kesimpulan laporan cocok dengan kriteria kelulusan, L/P terisi, standar tinggi sudah ada, dan tidak ada NIPP ganda.
         </EmptyState>
       ) : (
         <ul className="flex flex-col divide-y divide-line">{items}</ul>

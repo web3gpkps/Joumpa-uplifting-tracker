@@ -63,7 +63,7 @@ export function ConflictTable({ caption, rows, mode, emptyTitle, emptyText }: Co
         <tr>
           <Th className="w-56">Tabel · baris</Th>
           <Th>Kolom</Th>
-          <Th>Nilai di Sheet</Th>
+          <Th>Nilai di Google Sheet</Th>
           <Th>Nilai di database</Th>
           <Th>Nilai awal (baseline)</Th>
           <Th>Keputusan</Th>

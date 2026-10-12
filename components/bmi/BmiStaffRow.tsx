@@ -220,7 +220,7 @@ export function BmiStaffRow({
         onSubmit={onSubmit}
         noValidate
         aria-label={`Cek BMI periode ${period}, ${staff.name}`}
-        className="grid grid-cols-2 gap-x-3 gap-y-3 px-4 py-4 sm:px-6 md:grid-cols-4 md:gap-x-4 xl:grid-cols-[minmax(12rem,1fr)_10rem_8rem_8rem_minmax(9rem,13rem)_11rem] xl:items-start"
+        className="grid grid-cols-2 gap-x-3 gap-y-3 px-4 py-4 md:grid-cols-4 md:gap-x-4 xl:grid-cols-[minmax(12rem,1fr)_10rem_8rem_8rem_minmax(9rem,13rem)_11rem] xl:items-start"
       >
         <div className="col-span-2 flex min-w-0 flex-col gap-1 md:col-span-4 xl:col-span-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -389,7 +389,7 @@ function BmiProfile({ accessKey, period, plannedDates, staff, summary }: BmiProf
 
   return (
     <details className="group border-t border-line">
-      <summary className="flex min-h-11 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm sm:px-6">
+      <summary className="flex min-h-11 cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm">
         <span className="font-semibold text-brand underline-offset-2 group-open:underline">
           Profil, catatan, dan riwayat
         </span>
@@ -398,7 +398,7 @@ function BmiProfile({ accessKey, period, plannedDates, staff, summary }: BmiProf
         </span>
       </summary>
 
-      <div className="grid gap-6 px-4 pt-2 pb-5 sm:px-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-10">
+      <div className="grid gap-6 px-4 pt-2 pb-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-10">
         <form onSubmit={onSubmit} aria-label={`Profil BMI ${staff.name}`} className="flex flex-col gap-3">
           <Field label="L/P" help="Dipakai untuk syarat tinggi badan.">
             <Select value={gender} onChange={(e) => { setGender(e.target.value); if (save.status !== "saving") setSave({ status: "idle" }); }}>

@@ -20,10 +20,7 @@ const CONFLICT_COLUMNS =
 export default function SinkronisasiPage() {
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Sinkronisasi Google Sheet"
-        description="Database aplikasi adalah sumber utama; Google Sheet adalah salinan yang ikut bisa diubah. Di sini terlihat kapan sinkronisasi terakhir berhasil, galat terakhir, dan konflik yang perlu ditinjau."
-      />
+      <PageHeader title="Sinkronisasi" meta="Database aplikasi sumber utama · Google Sheet salinan" />
       <Suspense fallback={<LoadingState label="Memuat status sinkronisasi" />}>
         <SyncData />
       </Suspense>
@@ -116,14 +113,13 @@ async function SyncData() {
         {stateResult.error ? (
           <ErrorState
             title="Status sinkronisasi tidak bisa dimuat"
-            cause={`Database menjawab: ${stateResult.error.message}`}
+            cause="Server tidak menjawab."
             action={<ReloadButton />}
           />
         ) : !state ? (
           <ErrorState
-            title="Baris sync_state belum ada"
-            cause="Tabel sync_state seharusnya berisi satu baris dari migrasi sinkronisasi."
-            action="Jalankan ulang migrasi sync_tables atau hubungi pengelola aplikasi."
+            title="Sinkronisasi belum disiapkan"
+            action="Hubungi pengelola aplikasi."
           />
         ) : (
           <div className="flex flex-col gap-4">
@@ -161,13 +157,13 @@ async function SyncData() {
             </dl>
             {!state.initialized ? (
               <p className="text-sm text-warning">
-                Sinkron pertama belum selesai: belum ada data acuan (baseline) antara database dan Sheet.
+                Sinkron pertama belum selesai.
               </p>
             ) : null}
             <div>
               <h3 className="section-label">Galat terakhir</h3>
               {state.last_error ? (
-                <p className="mt-1 rounded-control border border-line bg-paper p-3 text-sm wrap-break-word whitespace-pre-wrap text-ink">
+                <p className="mt-1 rounded-control border border-line bg-bg p-3 text-sm wrap-break-word whitespace-pre-wrap text-ink">
                   {state.last_error}
                 </p>
               ) : (
@@ -175,28 +171,21 @@ async function SyncData() {
               )}
             </div>
             <p className="text-sm text-ink-muted">
-              Halaman ini tidak punya tombol untuk menjalankan sinkronisasi: menjalankannya butuh kunci rahasia
-              server yang tidak disimpan di aplikasi web. Sinkronisasi dipicu dari server (jadwal database dan
-              perubahan data) dan dari menu JOUMPA di Google Sheet, jika sudah dipasang.
+              Sinkronisasi berjalan otomatis setiap menit dan setelah ada perubahan di aplikasi atau Google Sheet.
             </p>
           </div>
         )}
       </Panel>
 
       <Panel
-        title={`Belum ditinjau (${openCount})`}
-        description={
-          openCount > openRows.length
-            ? `Menampilkan ${openRows.length} terbaru dari ${openCount}. Tandai selesai setelah nilai yang benar dipastikan di aplikasi atau Sheet.`
-            : "Tandai selesai setelah nilai yang benar dipastikan di aplikasi atau Sheet. Mengubah nilai dilakukan di tempat datanya, bukan di sini."
-        }
+        title={openCount > openRows.length ? `Belum ditinjau (${openRows.length} terbaru dari ${openCount})` : `Belum ditinjau (${openCount})`}
         padding="flush"
       >
         {openResult.error ? (
-          <div className="px-4 sm:px-6">
+          <div className="px-4">
             <ErrorState
               title="Daftar konflik tidak bisa dimuat"
-              cause={`Database menjawab: ${openResult.error.message}`}
+              cause="Server tidak menjawab."
               action={<ReloadButton />}
             />
           </div>
@@ -207,22 +196,21 @@ async function SyncData() {
               rows={openRows}
               mode="open"
               emptyTitle="Tidak ada konflik yang perlu ditinjau"
-              emptyText="Konflik muncul di sini jika sel yang sama diubah di aplikasi dan di Sheet sebelum sinkron, atau jika nilai di Sheet ditolak."
+              emptyText="Konflik muncul jika isian yang sama diubah di aplikasi dan di Google Sheet sebelum sinkron."
             />
           </div>
         )}
       </Panel>
 
       <Panel
-        title="Sudah ditinjau"
-        description={`${resolvedCount} konflik sudah ditandai selesai${resolvedCount > resolvedRows.length ? `; menampilkan ${resolvedRows.length} terbaru` : ""}.`}
+        title={resolvedCount > resolvedRows.length ? `Sudah ditinjau (${resolvedRows.length} terbaru dari ${resolvedCount})` : `Sudah ditinjau (${resolvedCount})`}
         padding="flush"
       >
         {resolvedResult.error ? (
-          <div className="px-4 sm:px-6">
+          <div className="px-4">
             <ErrorState
               title="Riwayat konflik tidak bisa dimuat"
-              cause={`Database menjawab: ${resolvedResult.error.message}`}
+              cause="Server tidak menjawab."
               action={<ReloadButton />}
             />
           </div>

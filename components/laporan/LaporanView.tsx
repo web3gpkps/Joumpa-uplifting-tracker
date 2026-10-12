@@ -8,10 +8,12 @@ import { hrefs, lastChangedLabel, stationCodes, trackerData, type Workspace, typ
 import { saveWeeklyFindings } from "./actions";
 import { APP_NAME, APP_TAGLINE } from "@/lib/app-info";
 import { Logo } from "@/components/shell/Logo";
-import { WeekRail } from "@/components/shell/WeekRail";
 import { programmeStatus } from "@/components/shell/programme-calendar";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { StationFilter } from "@/components/ui/StationFilter";
+import { StationSelect } from "@/components/ui/StationSelect";
+import { Toolbar } from "@/components/ui/Toolbar";
+import { WeekSelect } from "@/components/ui/WeekSelect";
+import { ALL_STATIONS, weekOptions } from "@/components/ui/url-options";
 import { EmptyState } from "@/components/ui/States";
 import { ActionProgressTable } from "@/components/ringkasan/DashboardTables";
 import { withoutTotals } from "@/components/ringkasan/data";
@@ -76,7 +78,7 @@ export function LaporanView({
   return (
     <div className="flex flex-col gap-6 print:gap-4">
       <div className="hidden print:flex print:items-center print:gap-4">
-        <Logo height={48} />
+        <Logo height={32} />
         <div className="border-l border-line pl-4">
           <p className="text-sm font-semibold text-ink">{APP_NAME}</p>
           <p className="text-xs text-ink-muted">{APP_TAGLINE}</p>
@@ -85,21 +87,27 @@ export function LaporanView({
 
       <PageHeader
         title={`Laporan Mingguan, Minggu ke-${week}`}
-        context={scopeName}
-        description="Kenaikan performa SDM dan tindak lanjut Uplifting Service JOUMPA."
-        actions={<PrintButton label={station ? `Cetak laporan ${station}` : undefined} />}
+        meta={scopeName}
+        actions={<PrintButton />}
       >
-        {ws.isKps ? (
-          <StationFilter
-            label="Laporan untuk stasiun"
-            current={station}
-            options={[null, ...stationCodes(ws)].map((code) => ({
-              code,
-              label: code ?? "Semua stasiun",
-              href: links.to("laporan", { minggu: week, stasiun: code }),
-            }))}
+        <Toolbar label="Pilih laporan">
+          <WeekSelect
+            label="Minggu"
+            options={weekOptions(s, weekHref)}
+            current={String(week)}
+            nowValue={programme.phase === "during" ? String(programme.week) : undefined}
           />
-        ) : null}
+          {ws.isKps ? (
+            <StationSelect
+              current={station ?? ALL_STATIONS}
+              options={[null, ...stationCodes(ws)].map((code) => ({
+                value: code ?? ALL_STATIONS,
+                label: code ?? "Semua stasiun",
+                href: links.to("laporan", { minggu: week, stasiun: code }),
+              }))}
+            />
+          ) : null}
+        </Toolbar>
         <dl className="grid gap-x-8 gap-y-1 text-sm sm:grid-cols-[auto_1fr] print:grid-cols-[auto_1fr_auto_1fr]">
           <dt className="text-ink-muted">Periode</dt>
           <dd className="font-semibold text-ink">
@@ -116,34 +124,17 @@ export function LaporanView({
         </dl>
       </PageHeader>
 
-      <section aria-labelledby="pilih-minggu" className="flex flex-col gap-2" data-print="hide">
-        <h2 id="pilih-minggu" className="section-label">
-          Pilih minggu laporan. Semua bagian di bawah mengikuti minggu yang dipilih; cetak setiap Jumat untuk OCS,
-          OAO dan GM cabang.
-        </h2>
-        {ws.schedule ? (
-          <WeekRail
-            settings={ws.schedule}
-            today={today}
-            selectedWeek={week}
-            hrefForWeek={weekHref}
-            showSummary={false}
-            label="Minggu laporan"
-          />
-        ) : null}
-      </section>
-
       <nav
         aria-label="Bagian laporan"
         data-print="hide"
-        className="flex flex-wrap items-center gap-2 md:sticky md:top-0 md:z-10 md:-mx-2 md:bg-paper md:px-2 md:py-2"
+        className="flex flex-wrap items-center gap-2 md:sticky md:top-0 md:z-10 md:-mx-2 md:bg-bg md:px-2 md:py-2"
       >
         <span className="section-label mr-1">Lompat ke</span>
         {SECTIONS.map((sec) => (
           <a
             key={sec.id}
             href={`#${sec.id}`}
-            className="inline-flex min-h-11 items-center rounded-control border border-line-strong bg-surface px-3 text-sm text-ink transition-colors duration-150 hover:bg-neutral-tint sm:min-h-9"
+            className="inline-flex min-h-11 items-center rounded-control border border-line-strong bg-surface px-3 text-sm text-ink transition-colors duration-120 hover:bg-neutral-tint sm:min-h-9"
           >
             <span className="font-semibold">{sec.letter}</span>
             <span className="ml-1.5">{sec.label}</span>
@@ -178,7 +169,7 @@ export function LaporanView({
               </>
             ) : null
           }
-          footnote={`* Kenaikan vs baseline = rata-rata minggu ini (SDM yang dinilai) dikurangi rata-rata baseline training semua SDM, sesuai rumus workbook. Sesuai = rata-rata ≥ ${formatScore(s.passAvgMin)}; Tidak Sesuai = di bawah ${formatScore(s.improveAvgMin)}.`}
+          footnote={`* Kenaikan vs baseline = rata-rata minggu ini (SDM yang dinilai) dikurangi rata-rata baseline training semua SDM. Sesuai = rata-rata ≥ ${formatScore(s.passAvgMin)}; Tidak Sesuai = di bawah ${formatScore(s.improveAvgMin)}.`}
         >
           <TableFrame>
             <WeeklyPerformanceTable
@@ -235,7 +226,7 @@ export function LaporanView({
               layout="inline"
               className="rounded-control bg-neutral-tint px-3 print:bg-transparent print:px-0"
             >
-              Grafik dan tabel tren muncul setelah nilai praktik Minggu ke-1 diisi di Log Performa
+              Grafik dan tabel tren muncul setelah nilai praktik Minggu ke-1 diisi di Penilaian Mingguan
               {programme.phase === "before" ? ` (mulai ${formatHariTanggal(programme.startDate)})` : ""}.
             </EmptyState>
           ) : (

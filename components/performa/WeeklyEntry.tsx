@@ -73,7 +73,7 @@ export function WeeklyEntry({ accessKey, week, settings, groups, showStationHead
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-col gap-3 border-b border-line px-4 pb-4 sm:px-6 nav:flex-row nav:items-end nav:justify-between nav:gap-6">
+      <div className="flex flex-col gap-3 border-b border-line px-4 pb-4 grid:flex-row grid:items-end grid:justify-between grid:gap-6">
         <Field
           label="Pengamat untuk baris yang Anda nilai"
           help="Terisi sendiri di kolom Pengamat saat Anda mulai menilai SDM yang pengamatnya masih kosong. Diingat di peramban ini."
@@ -97,18 +97,18 @@ export function WeeklyEntry({ accessKey, week, settings, groups, showStationHead
       <div
         role="region"
         aria-label={label}
-        className="nav:max-h-[min(72dvh,820px)] nav:overflow-auto nav:overscroll-x-contain"
+        className="grid:max-h-[min(72dvh,820px)] grid:overflow-auto grid:overscroll-x-contain"
       >
-        <div className="nav:w-max nav:min-w-full">
+        <div className="grid:w-max grid:min-w-full">
           <div
             aria-hidden="true"
             className={cx(
               ROW_GRID,
-              "hidden border-b border-line-strong bg-paper py-2 text-xs font-semibold text-ink-muted",
-              "nav:sticky nav:top-0 nav:z-[2] nav:grid",
+              "hidden border-b border-line-strong bg-bg py-2 text-xs font-semibold text-ink-muted",
+              "grid:sticky grid:top-0 grid:z-[2] grid:grid",
             )}
           >
-            <div className={cx(CELL.name, STICKY_FIRST, "nav:z-[3] nav:flex nav:items-center nav:bg-paper")}>SDM</div>
+            <div className={cx(CELL.name, STICKY_FIRST, "grid:z-[3] grid:flex grid:items-center grid:bg-bg")}>SDM</div>
             {ASPECTS.map((aspect) => (
               <div key={aspect.key} className={cx(CELL.score, "flex flex-col items-center text-center leading-tight")}>
                 <span className="text-sm text-ink">{aspect.letter}</span>
@@ -122,7 +122,7 @@ export function WeeklyEntry({ accessKey, week, settings, groups, showStationHead
             </div>
             <div className={CELL.observer}>Pengamat</div>
             <div className={CELL.notes}>Catatan coaching</div>
-            <div className={cx(CELL.save, "nav:pr-3")}>Simpan</div>
+            <div className={cx(CELL.save, "grid:pr-3")}>Simpan</div>
           </div>
 
           <ul>
@@ -161,8 +161,8 @@ function GroupRows({
   return (
     <>
       {showHeading ? (
-        <li className="border-b border-line bg-paper px-4 py-2 nav:px-3">
-          <h3 className="text-sm font-semibold text-ink nav:sticky nav:left-3 nav:w-fit">
+        <li className="border-b border-line bg-bg px-4 py-2 grid:px-3">
+          <h3 className="text-sm font-semibold text-ink grid:sticky grid:left-3 grid:w-fit">
             Stasiun {group.station}
             <span className="ml-2 text-xs font-normal text-ink-muted">{group.summary}</span>
           </h3>
