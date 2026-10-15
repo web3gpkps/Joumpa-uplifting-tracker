@@ -22,7 +22,7 @@ select lives_ok($$insert into public.weekly_scores (staff_code, week, score_a) v
 select throws_ok($$insert into public.weekly_scores (staff_code, week) values ('TST-SUB', 1)$$, '23505', null, 'one row per staff x week');
 
 -- bmi_checks
-select throws_ok($$insert into public.bmi_checks (staff_code, period, height_cm, weight_kg) values ('TST-SUB', 11, 170, 60)$$, '23514', null, 'period is 1..10');
+select throws_ok($$insert into public.bmi_checks (staff_code, period, height_cm, weight_kg) values ('TST-SUB', 53, 170, 60)$$, '23514', null, 'period is 1..52');
 select throws_ok($$insert into public.bmi_checks (staff_code, period, height_cm, weight_kg) values ('TST-SUB', 1, null, 60)$$, '23502', null, 'height is required on a stored check');
 
 -- action_items
@@ -53,7 +53,16 @@ select ok((select staff_code is null from public.replacements where replaced_nam
   'deleting the staff record sets replacements.staff_code NULL and keeps the row');
 
 -- settings
-select throws_ok('update public.settings set bmi_periods = 11', '23514', null, 'bmi_periods is 1..10');
+select throws_ok('update public.settings set bmi_periods = 53', '23514', null, 'bmi_periods is 1..52');
+select throws_ok('update public.settings set bmi_periods = 0', '23514', null, 'bmi_periods is at least 1');
+select lives_ok('update public.settings set bmi_periods = 8', 'the number of checks can be raised');
+select lives_ok('update public.settings set bmi_periods = 6', 'and lowered again while no check uses the dropped periods');
+insert into public.staff (code, station, name) values ('TST-GRD', 'SUB', 'Guard');
+insert into public.bmi_checks (staff_code, period, height_cm, weight_kg) values ('TST-GRD', 6, 170, 60);
+select throws_ok('update public.settings set bmi_periods = 5', '23514', 'bmi_periods_below_used', 'the number of checks cannot drop below a check that has data (check 6 is stored)');
+select is((select bmi_periods from public.settings), 6::smallint, 'the refused change left the number of checks as it was');
+delete from public.staff where code = 'TST-GRD';
+update public.settings set bmi_periods = 5;
 select throws_ok('update public.settings set improve_avg_min = 4.5', '23514', null, 'improve_avg_min <= pass_avg_min');
 select throws_ok('update public.settings set bmi_normal_max = 30', '23514', null, 'BMI thresholds stay ordered');
 select throws_ok($$insert into public.settings (id, week1_start, weeks, bmi_first_check, bmi_interval_days, bmi_periods,

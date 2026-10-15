@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, NumberInput } from "@/components/ui/Field";
 import { Panel } from "@/components/ui/Panel";
 import { SaveStatus, type SaveState } from "@/components/ui/SaveStatus";
-import { formatTanggal, formatTanggalPendek, isValidIsoDate } from "@/lib/dates";
-import { DEFAULT_SETTINGS, bmiCheckDate, weekEnd, weekStart, type Settings } from "@/lib/rules";
+import { MAX_BMI_INTERVAL_DAYS, MAX_BMI_PERIODS, bmiCheckLabel } from "@/lib/bmi-periods";
+import { formatTanggal, isValidIsoDate } from "@/lib/dates";
+import { DEFAULT_SETTINGS, weekEnd, weekStart, type Settings } from "@/lib/rules";
 import { saveSettings } from "@/app/admin/pengaturan/actions";
 import {
   SETTING_SECTIONS,
@@ -30,8 +31,8 @@ function scheduleOf(values: SettingsValues): Settings | null {
   const periods = Number(values.bmi_periods);
   if (!isValidIsoDate(values.week1_start) || !isValidIsoDate(values.bmi_first_check)) return null;
   if (!Number.isInteger(weeks) || weeks < 1 || weeks > 20) return null;
-  if (!Number.isInteger(interval) || interval < 1 || interval > 90) return null;
-  if (!Number.isInteger(periods) || periods < 1 || periods > 10) return null;
+  if (!Number.isInteger(interval) || interval < 1 || interval > MAX_BMI_INTERVAL_DAYS) return null;
+  if (!Number.isInteger(periods) || periods < 1 || periods > MAX_BMI_PERIODS) return null;
   return {
     ...DEFAULT_SETTINGS,
     week1Start: values.week1_start,
@@ -143,10 +144,8 @@ export function SettingsForm({ initial, genderMissing }: SettingsFormProps) {
             ) : null}
             {section.id === "cek-bmi" && schedule ? (
               <p className="text-sm text-ink-muted">
-                Jadwal cek:{" "}
-                {Array.from({ length: schedule.bmiPeriods }, (_, i) => bmiCheckDate(i + 1, schedule))
-                  .map((d, i, all) => (i === all.length - 1 ? formatTanggal(d) : formatTanggalPendek(d)))
-                  .join(", ")}
+                {bmiCheckLabel(1, schedule)}
+                {schedule.bmiPeriods > 1 ? ` sampai ${bmiCheckLabel(schedule.bmiPeriods, schedule)}` : ""}.
               </p>
             ) : null}
           </div>

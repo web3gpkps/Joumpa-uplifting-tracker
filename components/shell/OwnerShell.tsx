@@ -49,7 +49,7 @@ export function OwnerShell({ email, children }: { email: string; children: React
       }
       footer={
         <div className="flex items-center justify-between gap-2">
-          <span className="min-w-0 truncate text-xs text-ink-muted" title={email}>
+          <span className="min-w-0 truncate text-xs text-[#b4d2c4]" title={email}>
             {email}
           </span>
           <SignOutButton variant="ghost" size="sm" />

@@ -13,7 +13,8 @@ sheet demi sheet.
 |---|---|---|
 | Stasiun (SUB, DPS, CGK, HLP, KNO) | tautan ruang kerja `/s/<token>`, tanpa akun | data stasiun sendiri |
 | KPS | tautan ruang kerja dengan lingkup KPS, tanpa akun | semua stasiun |
-| Pemilik | masuk di `/login`, area `/admin` | semua stasiun, termasuk tautan, Parameter dan sinkronisasi |
+| Akun cabang | daftar di `/register`, disetujui pemilik, lalu masuk di `/login`, area `/cabang` | cabang akun itu (KPS = semua stasiun) |
+| Pemilik | masuk di `/login`, area `/admin` | semua stasiun, termasuk tautan, akun cabang, Parameter dan sinkronisasi |
 
 Sheet yang tersedia: Dashboard, Master SDM, Log Performa, Cek BMI, Tindak Lanjut, Penggantian SDM
 dan Laporan Mingguan (bisa dicetak A4). Di desktop pengisian memakai tabel ala spreadsheet
@@ -57,10 +58,32 @@ supabase test db --db-url "$SUPABASE_DB_URL" tests/sql
 
 Langkah produksi sekali jalan (pg_cron, Vault) ada di `supabase/production-setup.sql`.
 
+Tes keamanan juga bisa dijalankan tanpa Docker dan tanpa menyentuh database mana pun: setiap file
+`tests/sql/*.test.sql` mendapat Postgres baru di PGlite dengan semua migrasi.
+
+```bash
+bun tests/sql/run.ts          # semua file
+bun tests/sql/run.ts 08       # hanya file yang namanya memuat "08"
+```
+
+### Akun cabang
+
+1. Orang mendaftar di `/register` (nama, email, kata sandi, cabang). Trigger di `auth.users` membuat profilnya
+   `pending`; peran dan status dari form tidak pernah dipakai.
+2. Pemilik menyetujui, menolak, mengganti cabang atau menghapus akun di **Akun Cabang** (`/admin/akun`).
+3. Akun aktif masuk di `/login` dan dibawa ke `/cabang`, dengan lingkup cabangnya ditentukan di database.
+4. Lupa kata sandi: `/forgot-password`, tautan email ke `/auth/callback`, lalu `/reset-password`.
+
+Pengaturan di dashboard Supabase (tidak bisa lewat migrasi): Authentication, URL Configuration,
+**Site URL** = alamat aplikasi dan **Redirect URLs** memuat `<alamat aplikasi>/auth/callback` (serta
+`http://localhost:3000/auth/callback` untuk pengembangan). Pendaftaran email harus aktif, dengan konfirmasi
+email. Pengirim email bawaan Supabase dibatasi jumlahnya; pasang SMTP sendiri bila pendaftar banyak.
+
 ## Tes
 
 ```bash
-bun test lib components   # rumus workbook, agregasi, grid, sinkronisasi
+bun test                  # rumus workbook, agregasi, grid, sinkronisasi, komponen
+bun tests/sql/run.ts      # tes keamanan SQL di PGlite
 bun run lint
 bun run build
 ```

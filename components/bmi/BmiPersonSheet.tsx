@@ -7,16 +7,21 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select, Textarea } from "@/components/ui/Field";
 import { SaveStatus, type SaveState } from "@/components/ui/SaveStatus";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { formatTanggalPendek } from "@/lib/dates";
+import { CategoryBadge, HeightBadge, ScheduleBadge } from "./badges";
+import { formatTanggal, formatTanggalPendek } from "@/lib/dates";
 import { formatDecimal, formatSignedKg } from "@/lib/format";
-import type { BmiSummary } from "@/lib/rules";
+import type { BmiSummary } from "./schedule";
+import { NOTE_LABEL } from "./labels";
 
 export type BmiPerson = {
   code: string;
+  /** What the sheet shows as the id: the staff code, or the NIPP in a branch account's view. */
+  displayId?: string;
   name: string;
   station: string | null;
+  /** NIPP as stored. */
+  employeeNo: string | null;
   gender: string | null;
-  /** "Catatan program BMI" (staff.bmi_note). */
   bmiNote: string | null;
   assignmentStatus: string | null;
   summary: BmiSummary;
@@ -29,7 +34,9 @@ type BmiPersonSheetProps = {
   accessKey: string;
   person: BmiPerson;
   plannedDates: string[];
-  /** The period chosen on the page, marked in the history. */
+  /** "BMI Cek ke-3 (Periode 9-22 Nov 2026)" for every period. */
+  labels: string[];
+  /** The slot chosen on the page, marked in the history. */
   period: number;
 };
 
@@ -37,25 +44,37 @@ type BmiPersonSheetProps = {
 export type SheetState = { open: boolean; n: number };
 
 export const CLOSED_SHEET: SheetState = { open: false, n: 0 };
-export const openSheet = (s: SheetState): SheetState => ({ open: true, n: s.n + 1 });
-export const closeSheet = (s: SheetState): SheetState => ({ ...s, open: false });
+export const openSheet = (s: SheetState): SheetState => ({
+  open: true,
+  n: s.n + 1,
+});
+export const closeSheet = (s: SheetState): SheetState => ({
+  ...s,
+  open: false,
+});
 
 const CONNECTION_LOST = "Koneksi ke server terputus. Isian masih ada; simpan lagi.";
 
-function requirementText(summary: BmiSummary, gender: string | null) {
-  const r = summary.heightRequirement;
-  if (r === "Memenuhi" || r === "Tidak Memenuhi") return <StatusChip label={r} />;
-  if (summary.latestHeight === null) return "–";
-  if (gender !== "L" && gender !== "P") return "Isi L/P dulu";
-  return "Standar tinggi belum diatur";
+/** True when L/P is still empty, so Syarat Tinggi Badan cannot be decided (the row shows an "Isi profil" marker). */
+export function profileIncomplete(person: Pick<BmiPerson, "gender">): boolean {
+  return person.gender !== "L" && person.gender !== "P";
 }
 
 /**
  * One person's BMI profile and history in a sheet (full screen on a phone): L/P and the
- * BMI programme note (share_save_profile, both sent), then every period so far. Render it
- * outside forms and grids: a grid would otherwise take the keys and paste typed here.
+ * programme note (share_save_profile, both sent),
+ * the next check and every slot so far. Render it outside forms and grids (a grid would
+ * otherwise take the keys and paste typed into the sheet).
  */
-export function BmiPersonSheet({ open, onClose, accessKey, person, plannedDates, period }: BmiPersonSheetProps) {
+export function BmiPersonSheet({
+  open,
+  onClose,
+  accessKey,
+  person,
+  plannedDates,
+  labels,
+  period,
+}: BmiPersonSheetProps) {
   const formId = useId();
   const savedGender = person.gender === "L" || person.gender === "P" ? person.gender : "";
   const savedNote = person.bmiNote ?? "";
@@ -91,7 +110,7 @@ export function BmiPersonSheet({ open, onClose, accessKey, person, plannedDates,
 
   const { summary } = person;
   const weighings = summary.periods.filter((p) => p?.weightKg !== null && p?.weightKg !== undefined).length;
-  const meta = [person.code, person.station].filter(Boolean).join(" · ");
+  const meta = [person.displayId ?? person.code, person.station].filter(Boolean).join(" · ");
 
   return (
     <Dialog
@@ -100,7 +119,7 @@ export function BmiPersonSheet({ open, onClose, accessKey, person, plannedDates,
       dismissible={!pending}
       size="md"
       title={person.name}
-      description={<span className="tabular">{meta}</span>}
+      description={<span className="tabular-nums">{meta}</span>}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={pending}>
@@ -114,21 +133,22 @@ export function BmiPersonSheet({ open, onClose, accessKey, person, plannedDates,
     >
       <div className="flex flex-col gap-6">
         <form id={formId} onSubmit={onSubmit} aria-label={`Profil BMI ${person.name}`} className="flex flex-col gap-3">
-          <Field label="L/P" help="Dipakai untuk syarat tinggi.">
-            <Select
-              value={gender}
-              onChange={(e) => {
-                setGender(e.target.value);
-                touched();
-              }}
-              className="max-w-40"
-            >
-              <option value="">Belum diisi</option>
-              <option value="L">L</option>
-              <option value="P">P</option>
-            </Select>
-          </Field>
-          <Field label="Catatan program BMI">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="L/P">
+              <Select
+                value={gender}
+                onChange={(e) => {
+                  setGender(e.target.value);
+                  touched();
+                }}
+              >
+                <option value="">Belum diisi</option>
+                <option value="L">L</option>
+                <option value="P">P</option>
+              </Select>
+            </Field>
+          </div>
+          <Field label={NOTE_LABEL}>
             <Textarea
               value={note}
               maxLength={2000}
@@ -141,12 +161,25 @@ export function BmiPersonSheet({ open, onClose, accessKey, person, plannedDates,
           <SaveStatus state={save} />
         </form>
 
-        <dl className="grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
-          <dt className="text-ink-muted">Syarat tinggi</dt>
-          <dd className="text-ink">{requirementText(summary, person.gender)}</dd>
+        <dl className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
+          <dt className="text-ink-muted">NIPP</dt><dd className="text-ink tabular-nums [overflow-wrap:anywhere]">{person.employeeNo || "–"}</dd>
+          <dt className="text-ink-muted">Jumlah cek</dt><dd className="text-ink tabular-nums">{summary.checks}</dd>
+          <dt className="text-ink-muted">Tanggal cek terakhir</dt>
+          <dd className="text-ink tabular-nums">{summary.lastCheckDate ? formatTanggal(summary.lastCheckDate) : "–"}</dd>
+          <dt className="text-ink-muted">BMI terakhir</dt><dd className="text-ink tabular-nums">{formatDecimal(summary.latestBmi, 1) || "–"}</dd>
+          <dt className="text-ink-muted">Kategori terakhir</dt><dd><CategoryBadge category={summary.latestCategory} /></dd>
+          <dt className="text-ink-muted">Cek berikutnya</dt>
+          <dd className="flex flex-wrap items-center gap-2 text-ink tabular-nums">
+            <time dateTime={summary.nextCheck}>{formatTanggal(summary.nextCheck)}</time>
+            <ScheduleBadge status={summary.scheduleStatus} />
+          </dd>
           <dt className="text-ink-muted">Δ berat</dt>
-          <dd className="text-ink tabular">
+          <dd className="text-ink tabular-nums">
             {summary.weightDelta !== null && weighings >= 2 ? `${formatSignedKg(summary.weightDelta)} kg` : "–"}
+          </dd>
+          <dt className="text-ink-muted">Syarat tinggi badan</dt>
+          <dd>
+            <HeightBadge value={summary.heightRequirement} />
           </dd>
           {person.assignmentStatus && person.assignmentStatus !== "Aktif" ? (
             <>
@@ -167,26 +200,27 @@ export function BmiPersonSheet({ open, onClose, accessKey, person, plannedDates,
               const value = summary.periods[i] ?? null;
               const selected = i + 1 === period;
               return (
-                <li
-                  key={planned}
-                  className="grid grid-cols-[4.5rem_3.5rem_minmax(0,1fr)] items-center gap-x-3 py-2 text-sm"
-                >
+                <li key={planned} className="flex flex-col gap-1 py-2.5 text-sm">
                   <span className={selected ? "font-semibold text-ink" : "text-ink"}>
-                    Periode {i + 1}
+                    {labels[i]}
                     {selected ? <span className="sr-only"> (dipilih)</span> : null}
                   </span>
-                  <span className="text-ink-muted tabular">{formatTanggalPendek(value?.checkDate ?? planned)}</span>
-                  {value && value.heightCm !== null && value.weightKg !== null ? (
-                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular">
-                      <span>
-                        {formatDecimal(value.heightCm, 1)} cm · {formatDecimal(value.weightKg, 1)} kg
-                        {value.bmi !== null ? ` · BMI ${formatDecimal(value.bmi, 1)}` : ""}
-                      </span>
-                      {value.category ? <StatusChip label={value.category} /> : null}
+                  <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="text-ink-muted tabular-nums">
+                      {formatTanggalPendek(value?.checkDate ?? planned)}
                     </span>
-                  ) : (
-                    <span className="text-ink-muted">Belum dicek</span>
-                  )}
+                    {value && value.heightCm !== null && value.weightKg !== null ? (
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
+                        <span>
+                          {formatDecimal(value.heightCm, 1)} cm · {formatDecimal(value.weightKg, 1)} kg
+                          {value.bmi !== null ? ` · BMI ${formatDecimal(value.bmi, 1)}` : ""}
+                        </span>
+                        <CategoryBadge category={value.category} />
+                      </span>
+                    ) : (
+                      <span className="text-ink-muted">Belum dicek</span>
+                    )}
+                  </span>
                 </li>
               );
             })}

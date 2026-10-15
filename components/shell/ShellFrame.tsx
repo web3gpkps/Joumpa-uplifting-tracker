@@ -26,8 +26,8 @@ type ShellFrameProps = {
 
 /**
  * The app shell (DESIGN.md Shell and navigation), shared by station links and the owner.
- * ≥1024px: fixed 232px white sidebar (logo over a 2px bright emerald rule, scope line,
- * programme week, grouped nav, footer).
+ * ≥1024px: fixed 232px deep green sidebar (logo on a white chip, scope line, programme week,
+ * grouped nav, footer).
  * <1024px: 56px top bar with a "Menu" sheet; <640px also a bottom bar. Chrome is hidden in print.
  * Server component; only the nav (active state, sheet) runs on the client.
  */
@@ -37,8 +37,8 @@ export function ShellFrame({ sections, homeHref, scopeLabel, scopeShort, weekLin
   const navLabel = `Menu ${scopeLabel}`;
   const scopeBlock = (
     <>
-      <p className="text-sm font-semibold text-ink">{scopeLabel}</p>
-      {weekLine ? <p className="text-xs text-ink-muted">{weekLine}</p> : null}
+      <p className="text-sm font-semibold text-white">{scopeLabel}</p>
+      {weekLine ? <p className="text-xs text-[#b4d2c4]">{weekLine}</p> : null}
     </>
   );
 
@@ -53,19 +53,18 @@ export function ShellFrame({ sections, homeHref, scopeLabel, scopeShort, weekLin
 
       <aside
         data-print="hide"
-        className="fixed inset-y-0 left-0 z-20 hidden w-(--sidebar-width) flex-col border-r border-line bg-surface lg:flex"
+        className="on-navy fixed inset-y-0 left-0 z-20 hidden w-(--sidebar-width) flex-col bg-navy text-white lg:flex"
       >
         <div className="flex flex-col gap-3 px-5 pt-5 pb-4">
-          <Link href={homeHref} aria-label="Beranda" className="self-start rounded-control">
-            <Logo height={28} />
+          <Link href={homeHref} aria-label="Beranda" className="self-start rounded-control bg-white px-3 py-2">
+            <Logo height={24} />
           </Link>
-          <span aria-hidden="true" className="h-0.5 w-8 bg-accent-bright" />
           <div className="min-w-0">{scopeBlock}</div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-4">
           <SidebarNav sections={sections} label={navLabel} />
         </div>
-        {footer ? <div className="border-t border-line px-5 py-3">{footer}</div> : null}
+        {footer ? <div className="border-t border-white/15 px-5 py-3">{footer}</div> : null}
       </aside>
 
       <MobileChrome
@@ -101,11 +100,12 @@ export function ShellLoading({ scopeLabel }: { scopeLabel: string }) {
     <div className="min-h-dvh">
       <aside
         data-print="hide"
-        className="fixed inset-y-0 left-0 z-20 hidden w-(--sidebar-width) flex-col gap-3 border-r border-line bg-surface px-5 pt-5 lg:flex"
+        className="fixed inset-y-0 left-0 z-20 hidden w-(--sidebar-width) flex-col gap-3 bg-navy px-5 pt-5 lg:flex"
       >
-        <Logo height={28} />
-        <span aria-hidden="true" className="h-0.5 w-8 bg-accent-bright" />
-        <p className="text-sm font-semibold text-ink">{scopeLabel}</p>
+        <span className="self-start rounded-control bg-white px-3 py-2">
+          <Logo height={24} />
+        </span>
+        <p className="text-sm font-semibold text-white">{scopeLabel}</p>
       </aside>
       <header
         data-print="hide"

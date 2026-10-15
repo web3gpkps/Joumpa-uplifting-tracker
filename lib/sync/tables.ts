@@ -10,6 +10,7 @@
  *
  * Never synced: share_links, admins, stations, sync_* tables.
  */
+import { MAX_BMI_INTERVAL_DAYS, MAX_BMI_PERIODS } from "../bmi-periods";
 import { REPORT_GROUPS, STATIONS } from "../rules";
 import type { Canon, Column, ColumnType, DataColumn, KvEntry, SyncTable, TableSpec } from "./types";
 
@@ -49,8 +50,8 @@ export const SETTINGS_ENTRIES: KvEntry[] = [
   { key: "week1_start", label: "Tanggal mulai Minggu ke-1 (Senin)", type: date, required: true },
   { key: "weeks", label: "Jumlah minggu pemantauan", type: int(1, 20), required: true },
   { key: "bmi_first_check", label: "Tanggal cek BMI periode 1", type: date, required: true },
-  { key: "bmi_interval_days", label: "Interval cek BMI (hari)", type: int(1, 90), required: true },
-  { key: "bmi_periods", label: "Jumlah periode cek BMI", type: int(1, 10), required: true },
+  { key: "bmi_interval_days", label: "Interval cek BMI (hari)", type: int(1, MAX_BMI_INTERVAL_DAYS), required: true },
+  { key: "bmi_periods", label: "Jumlah periode cek BMI", type: int(1, MAX_BMI_PERIODS), required: true },
   { key: "bmi_underweight_below", label: "BMI kategori Kurus jika <", type: num(2, 1, 100), required: true },
   { key: "bmi_normal_max", label: "BMI Normal s.d.", type: num(2, 1, 100), required: true },
   { key: "bmi_overweight_max", label: "BMI Overweight s.d. (di atasnya Obesitas)", type: num(2, 1, 100), required: true },

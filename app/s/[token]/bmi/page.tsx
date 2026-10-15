@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Cek BMI" };
 export default function Page({ params, searchParams }: PageProps<"/s/[token]/bmi">) {
   return (
     <Suspense fallback={<BmiLoading />}>
-      <LinkScreenRoute params={params} searchParams={searchParams} screen={BmiScreen} />
+      <LinkScreenRoute params={params} searchParams={searchParams} screen={BmiScreen} bmiOnlyOk />
     </Suspense>
   );
 }

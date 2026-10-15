@@ -21,6 +21,7 @@ export type BmiCheckInput = {
 export type BmiProfileInput = {
   staffCode: string;
   gender: "L" | "P" | null;
+  /** "Catatan / Program Penyesuaian BB". */
   bmiNote: string | null;
 };
 
@@ -34,7 +35,7 @@ function isNumberOrNull(value: unknown): value is number | null {
 
 /**
  * share_save_check: upsert one period's height and weight; both empty deletes it.
- * accessKey is access.key (a link token, or "owner"); scope and ranges are checked in SQL.
+ * accessKey is access.key (a link token, "account" or "owner"); scope and ranges are checked in SQL.
  */
 export async function saveBmiCheck(accessKey: string, input: BmiCheckInput): Promise<BmiActionResult> {
   const resolved = await resolveAccess(accessKey);

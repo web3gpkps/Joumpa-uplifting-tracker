@@ -168,11 +168,11 @@ export function LaporanView({
 
         <Section
           id="bagian-c"
-          title={`C. Cek BMI periode ${report.bmiPeriod}`}
+          title={`C. BMI Cek ke-${report.bmiPeriod}`}
           note={
             totalBmi && totalBmi.checked === 0 ? (
               <>
-                Belum ada cek BMI periode {report.bmiPeriod}.{" "}
+                Belum ada BMI Cek ke-{report.bmiPeriod}.{" "}
                 {report.bmiPlannedDate <= today ? (
                   <Link
                     href={links.to("bmi", { periode: report.bmiPeriod, stasiun: station })}
@@ -188,7 +188,7 @@ export function LaporanView({
           caption={`Rencana ${formatTanggal(report.bmiPlannedDate)}. Tinggi tidak memenuhi memakai cek terakhir tiap SDM dan terhitung bila L/P dan standar tinggi terisi.`}
         >
           <TableFrame>
-            <BmiPeriodTable caption={`Cek BMI periode ${report.bmiPeriod}`} rows={withoutTotals(report.bmi, single)} />
+            <BmiPeriodTable caption={`BMI Cek ke-${report.bmiPeriod}`} rows={withoutTotals(report.bmi, single)} />
           </TableFrame>
         </Section>
 

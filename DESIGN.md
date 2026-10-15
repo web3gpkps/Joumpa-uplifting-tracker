@@ -100,3 +100,32 @@ dialogs and the phone sheet; transitions ≤ 120ms, none with reduced motion.
 - **Admin.** Same as Garuda: Tautan table + dialog, Parameter grouped form, Sinkronisasi status line +
   conflicts (owner-only technical detail behind a disclosure).
 - **Login.** Logo, title, email, password, "Masuk".
+
+## Theme revision (15 Okt 2026): same look as the Garuda tracker, in Gapura green
+
+Applied from the tokens in `app/globals.css`; the logo and CRUD behaviour are unchanged.
+- Sidebar and phone menu sheet are deep Gapura green (`--navy` #0f2f26, white on it 14.4:1) with the logo
+  on a white chip (never recoloured). Active item: white/10 fill, white 600 text, 3px bright emerald stripe.
+  Group headings #a3c4b5 (7.6:1), secondary text #b4d2c4 (8.9:1).
+- Primary colour stays deep emerald (`--brand` #0f6b4a); page `--bg` #f4f8f6.
+- Every page opens with the `.hero` banner (PageHeader): deep green to emerald, optional eyebrow, title,
+  one meta line, actions restyled for the dark banner (`.hero-actions`). Plain in print.
+- `MetricCards` gives four-up summaries. Radii 10 controls, 14 panels, 6 status labels; panels carry
+  `--shadow-card`; good status labels are tinted too.
+This supersedes the earlier "borders only", "4px radius" and white-sidebar rules.
+
+## Cek BMI (15 Okt 2026): the Garuda BMI Monitoring Tracker, on the JOUMPA sheet
+
+Same screen and behaviour as the Garuda tracker (banner, four counts, one workspace with filters, the
+spreadsheet-style table, edit dialogs, profile panel, CSV export, phone cards). The columns follow the
+JOUMPA tab "Cek BMI 2 Mingguan":
+- Identity: No, ID SDM (No Pegawai = NIPP for a branch account), Nama Petugas, Stasiun, L/P.
+- Every check: Tgl Cek, Tinggi (cm), Berat (kg), BMI, Kategori. No Komitmen/Target, no Touch Point,
+  no Feedback/Remarks, no "Ada Catatan BMI" (the JOUMPA sheet has none of them).
+- Summary: Tinggi/Berat Terakhir, Δ Berat vs Cek Pertama, BMI and Kategori Terakhir, Syarat Tinggi Badan,
+  then the derived Cek Berikutnya and Status Jadwal, and Catatan / Program Penyesuaian BB.
+- Checks are named "BMI Cek ke-N (Periode 12-25 Oct 2026)" everywhere (lib/bmi-periods.ts). Everyone is
+  checked every `bmi_interval_days`; the number of checks is 1 to 52 (Parameter) and cannot drop below a
+  check that has data. Every check, the first included, can be edited.
+- Access: a station link (not KPS) and a single-station branch account have the Cek BMI menu only; their
+  home and every other address redirect to Cek BMI. KPS links, KPS accounts and the owner keep every page.

@@ -3,6 +3,7 @@ import type { Workspace } from "@/lib/workspace";
 import { navSections, type WorkspaceAccess } from "@/lib/workspace/access";
 import { ShellFrame, ShellLoading } from "./ShellFrame";
 import { programmeWeekLine } from "./programme-calendar";
+import { bmiOnlyNavigation, isStationBmiShare } from "./cgk-bmi";
 
 type WorkspaceShellProps = {
   access: WorkspaceAccess;
@@ -15,18 +16,21 @@ type WorkspaceShellProps = {
 /**
  * Station link chrome (/s/<token>, no account). The scope ("Stasiun SUB" / "KPS · semua
  * stasiun") and the programme week sit under the logo; the link's label is the footer.
+ * A station link has the Cek BMI menu only; a KPS link gets every page.
  */
 export function WorkspaceShell({ access, workspace, today, children }: WorkspaceShellProps) {
+  const bmiOnly = isStationBmiShare(access, workspace);
+  const sections = navSections(access);
   return (
     <ShellFrame
-      sections={navSections(access)}
-      homeHref={access.basePath}
+      sections={bmiOnly ? bmiOnlyNavigation(sections) : sections}
+      homeHref={bmiOnly ? `${access.basePath}/bmi` : access.basePath}
       scopeLabel={workspace.scopeLabel}
       scopeShort={workspace.scope}
       weekLine={workspace.schedule ? programmeWeekLine(workspace.schedule, today) : undefined}
       footer={
         workspace.label ? (
-          <p className="truncate text-xs text-ink-muted" title={workspace.label}>
+          <p className="truncate text-xs text-[#b4d2c4]" title={workspace.label}>
             Tautan: {workspace.label}
           </p>
         ) : undefined

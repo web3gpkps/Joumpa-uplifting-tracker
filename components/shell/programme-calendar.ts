@@ -113,11 +113,11 @@ export function programmeSummary(settings: ProgrammeSettings, today: IsoDate): s
 
   let second = "";
   if (next && next.date === today) {
-    second = ` Cek BMI periode ${next.period} dijadwalkan hari ini.`;
+    second = ` BMI Cek ke-${next.period} dijadwalkan hari ini.`;
   } else if (next) {
-    second = ` Cek BMI berikutnya: periode ${next.period}, ${formatHariTanggal(next.date)}.`;
+    second = ` BMI Cek berikutnya: ke-${next.period} dari ${s.bmiPeriods}, ${formatHariTanggal(next.date)}.`;
   } else if (status.phase !== "before") {
-    second = ` Jadwal cek BMI terakhir (periode ${s.bmiPeriods}) sudah lewat.`;
+    second = ` BMI Cek terakhir (ke-${s.bmiPeriods}) sudah lewat.`;
   }
   return first + second;
 }
