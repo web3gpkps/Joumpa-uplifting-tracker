@@ -23,8 +23,11 @@ airport) and KPS head office (laptop, 5 stations), Gapura-branded, quiet and dat
 
 ## Identity
 
-- Logo: `public/brand/gapura-airport-services.png` only (JOUMPA is a Gapura programme). Set height,
-  width auto, never recolour, stretch or crop. Sidebar 28px, phone top bar 24px, login 40px, print 32px.
+- Logo: co-brand lockup (`components/shell/Logo.tsx`), JOUMPA Airport VIP Service
+  (`public/brand/joumpa-airport-vip-service.png`, at 0.6 of the Gapura height for optical balance), a 1px
+  --line divider, then Gapura Airport Services (`public/brand/gapura-airport-services.png`). Always on white
+  (the JOUMPA tagline is dark grey). Set height, width auto, never recolour, stretch or crop. Sizes are the
+  Gapura height: sidebar 24px (in a white chip), phone top bar 24px, login 40px, print 32px.
 - **Identity motif:** station codes (SUB, DPS, CGK, HLP, KNO) set in tabular semibold as short codes;
   the scope line ("Stasiun SUB", "KPS · semua stasiun") sits under the logo in the sidebar.
 - **Emerald replaces navy.** Deep emerald carries primary buttons, active nav and focus; the bright
