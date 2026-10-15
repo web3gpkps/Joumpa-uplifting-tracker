@@ -89,9 +89,11 @@ one side takes the other side's value; only two different non-empty values are a
 
 Guards and validation:
 
-- **Deletion guard**: more than `max(3, 10 %)` of a table's baseline rows deleted in one direction in one
-  run → those deletes are skipped, `rejected:deletes_skipped` logged once. Override for one run:
-  `{"allowMassDelete": ["staff"]}`.
+- **Deletion guard**: deletes reach the other side on the next run. Only an extreme one, more than
+  `max(10 rows, 50 %)` of a table's baseline rows deleted in one direction in one run (e.g. a tab cleared
+  by accident), is held back and logged once as `rejected:deletes_skipped`. /admin/sinkronisasi then shows
+  "Penghapusan ditahan" with **Terapkan penghapusan** (one run with `allowMassDelete` for those tables; the
+  log rows are marked reviewed). API override for one run: `{"allowMassDelete": ["staff"]}`.
 - **Invalid sheet values** (score 7, height 300, unknown option, bad date, `% Progres` > 100%, required
   cell cleared, unknown `ID SDM`, settings breaking the DB's cross-field checks) are never written. The cell
   gets a note, the baseline keeps the old value, `rejected:<kind>` is logged once; the note clears when the
@@ -170,7 +172,7 @@ HTTP 200 except `error` (500), unauthorized (401), not configured (503).
 | Header renamed / column moved out | that table frozen; `partial`; `rejected:header_error` logged once | restore the header text (`lib/sync/tables.ts` lists them) |
 | New staff from the website, no TMB row left | `rejected:no_sheet_row` ("kapasitas baris TMB penuh") | add `TMB-xx` rows to Master SDM (and matching rows in Cek BMI / Rekap) in the workbook |
 | BMI period > 5 in the DB | `rejected:no_sheet_row` | add period columns to the workbook, or ignore |
-| Many rows cleared in the sheet | deletes skipped; `rejected:deletes_skipped` | restore (Version history) or rerun with `allowMassDelete` |
+| More than half of a tab cleared at once | deletes held back; `rejected:deletes_skipped` | restore (Version history), or **Terapkan penghapusan** on /admin/sinkronisasi |
 | Bad credentials / env | `error` naming the variable (never its value) | fix env |
 
 ## Resolving conflicts
@@ -212,6 +214,16 @@ Steps:
 3. Real run: same curl without the body. Then run once more: every count should be 0.
 4. Install the Apps Script (`apps-script/README.md`), then add the Vault secrets so pg_cron and the DB
    trigger start calling the route.
+
+## Sheet-shaped views (schema `sheet`)
+
+Migration `20261015130000_sheet_mirror_views.sql` adds read-only views named after the tabs (`sheet."Master SDM"`,
+`sheet."Cek BMI 2 Mingguan"`, …) whose columns are the tab's header texts in the tab's order, formula
+columns included (computed like lib/rules.ts; time-dependent ones use the Jakarta date). Open them in the
+Supabase Table Editor (schema `sheet`). The tables in `public` stay normalized; the engine, the RPCs and the
+app use those. `Cek BMI 2 Mingguan` is rebuilt when `settings.bmi_periods` changes. Only postgres and
+service_role can read the schema (not exposed to the API). The owner can also run a sync from
+/admin/sinkronisasi (**Sinkronkan sekarang**) instead of waiting for the next minute.
 
 ## Local scripts
 

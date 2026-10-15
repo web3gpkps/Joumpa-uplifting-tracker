@@ -110,8 +110,8 @@ select results_eq(
        join pg_catalog.pg_namespace n on n.oid = p.pronamespace
       where n.nspname in ('public', 'private') and p.prosecdef
       order by 1 $$,
-  $$ values ('private.sync_ping'), ('public.is_admin'), ('public.share_delete_replacement'), ('public.share_kps_save_staff_baseline'), ('public.share_kps_update_action_item'), ('public.share_open'), ('public.share_save_check'), ('public.share_save_profile'), ('public.share_save_replacement'), ('public.share_save_staff'), ('public.share_save_weekly_report'), ('public.share_save_weekly_score'), ('public.share_update_action_item') $$,
-  'SECURITY DEFINER is limited to is_admin, the share_* RPCs and the sync ping'
+  $$ values ('private.rebuild_sheet_cek_bmi'), ('private.settings_rebuild_sheet_views'), ('private.sync_ping'), ('public.is_admin'), ('public.share_delete_replacement'), ('public.share_kps_save_staff_baseline'), ('public.share_kps_update_action_item'), ('public.share_open'), ('public.share_save_check'), ('public.share_save_profile'), ('public.share_save_replacement'), ('public.share_save_staff'), ('public.share_save_weekly_report'), ('public.share_save_weekly_score'), ('public.share_update_action_item') $$,
+  'SECURITY DEFINER is limited to is_admin, the share_* RPCs, the sync ping and the sheet view rebuild'
 );
 
 -- Future objects created by postgres in public do not grant anon (alter default privileges).
