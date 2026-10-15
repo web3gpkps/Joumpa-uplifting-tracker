@@ -106,7 +106,7 @@ reset role;
 select is((select v ->> 'scope' from _r where pk = 'open_null'), 'KPS', 'owner share_open(NULL): scope KPS');
 select is((select v -> 'link_id' from _r where pk = 'open_null'), 'null'::jsonb, 'owner share_open(NULL): link_id null');
 select is((select v ->> 'label' from _r where pk = 'open_null'), 'Pemilik', 'owner share_open(NULL): label Pemilik');
-select is((select jsonb_array_length(v -> 'stations') from _r where pk = 'open_null'), 5, 'owner sees all 5 stations');
+select is((select jsonb_array_length(v -> 'stations') from _r where pk = 'open_null'), (select count(*)::int from public.stations), 'owner sees every station');
 select is((select jsonb_array_length(v -> 'staff') from _r where pk = 'open_null'), (select staff from _counts), 'owner sees every staff member');
 select is((select jsonb_array_length(v -> 'action_items') from _r where pk = 'open_null'), (select items from _counts), 'owner sees every action item');
 select is((select jsonb_array_length(v -> 'replacements') from _r where pk = 'open_null'), (select repl from _counts), 'owner sees every replacement');

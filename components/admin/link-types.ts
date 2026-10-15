@@ -2,18 +2,19 @@
 
 export const KPS_SCOPE = "KPS";
 
-/** Same order as the dialog's Lingkup select: KPS first, then the stations. */
-export const LINK_SCOPES = ["KPS", "SUB", "DPS", "CGK", "HLP", "KNO"] as const;
-export type LinkScope = (typeof LINK_SCOPES)[number];
+/** A station as the Tautan Akses screen needs it (public.stations, in display order). */
+export type ScopeStation = { code: string; reportGroup: string };
 
-export function isLinkScope(value: string): value is LinkScope {
-  return (LINK_SCOPES as readonly string[]).includes(value);
+/** The dialog's Lingkup options: KPS first, then every station in public.stations. */
+export function linkScopes(stations: readonly ScopeStation[]): string[] {
+  return [KPS_SCOPE, ...stations.map((s) => s.code)];
 }
 
-/** What a scope opens, as short field help. CGK and HLP share the CGK & HLP report. */
-export function scopeDescription(scope: string): string {
+/** What a scope opens, as short field help. A station sharing a report (CGK & HLP) says so. */
+export function scopeDescription(scope: string, stations: readonly ScopeStation[] = []): string {
   if (scope === KPS_SCOPE) return "Semua stasiun, termasuk Catatan KPS";
-  if (scope === "CGK" || scope === "HLP") return `Data stasiun ${scope}, tindak lanjut laporan CGK & HLP`;
+  const group = stations.find((s) => s.code === scope)?.reportGroup;
+  if (group && group !== scope) return `Data stasiun ${scope}, tindak lanjut laporan ${group}`;
   return `Data stasiun ${scope} saja`;
 }
 

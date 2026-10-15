@@ -119,8 +119,14 @@ export class SupabaseSyncStore implements SyncStore {
 
   async readAll(): Promise<DbSnapshot> {
     const out: DbSnapshot = {};
-    await Promise.all(
-      this.specs.map(async (spec) => {
+    const stations = async () => {
+      const { data, error } = await this.db.from("stations").select("code, report_group").order("code");
+      if (error) throw new Error(`read stations ${safeDbError(error)}`);
+      out.stations = (data ?? []) as { code: string; report_group: string }[];
+    };
+    await Promise.all([
+      stations(),
+      ...this.specs.map(async (spec) => {
         if (spec.kv) {
           const { data, error } = await this.db.from("settings").select("*").eq("id", 1);
           if (error) throw new Error(`read settings ${safeDbError(error)}`);
@@ -139,7 +145,7 @@ export class SupabaseSyncStore implements SyncStore {
         }
         out[spec.table] = rows;
       }),
-    );
+    ]);
     return out;
   }
 

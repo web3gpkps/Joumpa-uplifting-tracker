@@ -11,7 +11,7 @@ sheet demi sheet.
 
 | Peran | Akses | Cakupan |
 |---|---|---|
-| Stasiun (SUB, DPS, CGK, HLP, KNO) | tautan ruang kerja `/s/<token>`, tanpa akun | data stasiun sendiri |
+| Stasiun (kode di tabel `stations`) | tautan ruang kerja `/s/<token>`, tanpa akun | data stasiun sendiri |
 | KPS | tautan ruang kerja dengan lingkup KPS, tanpa akun | semua stasiun |
 | Akun cabang | daftar di `/register`, disetujui pemilik, lalu masuk di `/login`, area `/cabang` | cabang akun itu (KPS = semua stasiun) |
 | Pemilik | masuk di `/login`, area `/admin` | semua stasiun, termasuk tautan, akun cabang, Parameter dan sinkronisasi |
@@ -57,6 +57,21 @@ supabase test db --db-url "$SUPABASE_DB_URL" tests/sql
 ```
 
 Langkah produksi sekali jalan (pg_cron, Vault) ada di `supabase/production-setup.sql`.
+
+### Daftar stasiun
+
+Stasiun diambil dari tabel `public.stations` (kode, kelompok laporan, urutan), sama seperti tracker
+Garuda: 35 stasiun, yaitu lima stasiun workbook (SUB, DPS, CGK, HLP, KNO) di urutan awal lalu stasiun
+tracker Garuda berurutan abjad. Setiap stasiun membuat laporannya sendiri, kecuali CGK dan HLP yang
+berbagi laporan "CGK & HLP". Menambah stasiun cukup satu baris:
+
+```sql
+insert into public.stations (code, report_group, sort) values ('XYZ', 'XYZ', 99);
+```
+
+Tautan, akun cabang, filter, form dan sinkronisasi langsung mengenalinya. Dashboard, Rekap dan Laporan
+di Google Sheet sendiri masih menghitung lima stasiun workbook: rumusnya perlu diperluas di workbook bila
+stasiun baru sudah punya petugas.
 
 Tes keamanan juga bisa dijalankan tanpa Docker dan tanpa menyentuh database mana pun: setiap file
 `tests/sql/*.test.sql` mendapat Postgres baru di PGlite dengan semua migrasi.

@@ -11,10 +11,7 @@
  * Never synced: share_links, admins, stations, sync_* tables.
  */
 import { MAX_BMI_INTERVAL_DAYS, MAX_BMI_PERIODS } from "../bmi-periods";
-import { REPORT_GROUPS, STATIONS } from "../rules";
 import type { Canon, Column, ColumnType, DataColumn, KvEntry, SyncTable, TableSpec } from "./types";
-
-export { REPORT_GROUPS, STATIONS };
 
 export const GENDERS = ["L", "P"] as const;
 export const REPORT_CONCLUSIONS = ["Sesuai", "Sesuai dengan Catatan", "Perlu Perbaikan", "Tidak Sesuai"] as const;
@@ -22,13 +19,15 @@ export const ASSIGNMENT_STATUSES = ["Aktif", "Coaching 30 Hari", "Diganti", "Dit
 export const ACTION_KINDS = ["Sekali", "Rutin"] as const;
 export const ACTION_STATUSES = ["Belum Mulai", "On Progress", "Selesai", "Tertunda"] as const;
 export const YA_BELUM = ["Ya", "Belum"] as const;
-export const REPORT_SCOPES = ["SUB", "DPS", "CGK", "HLP", "KNO", "KPS"] as const;
 
 const text = (): ColumnType => ({ kind: "text" });
 const int = (min?: number, max?: number): ColumnType => ({ kind: "int", min, max });
 const num = (scale: number, min?: number, max?: number): ColumnType => ({ kind: "numeric", scale, min, max });
 const date: ColumnType = { kind: "date" };
 const oneOf = (values: readonly string[]): ColumnType => ({ kind: "enum", values });
+// Checked against public.stations at run time (lib/sync/merge.ts normSheet).
+const station: ColumnType = { kind: "station" };
+const reportGroup: ColumnType = { kind: "report-group" };
 
 function d(db: string, header: string, type: ColumnType, extra: Partial<DataColumn> = {}): DataColumn {
   return { kind: "data", db, header, type, ...extra };
@@ -100,7 +99,7 @@ const staff: TableSpec = {
   deleteMode: "clear",
   columns: [
     d("code", "ID SDM", text()),
-    d("station", "Stasiun", oneOf(STATIONS), { required: true }),
+    d("station", "Stasiun", station, { required: true }),
     d("name", "Nama Petugas", text(), { required: true }),
     d("nipp", "NIPP", text()),
     d("gender", "L/P", oneOf(GENDERS)),
@@ -165,7 +164,7 @@ const actionItems: TableSpec = {
   deleteMode: "clear",
   columns: [
     d("code", "ID", text()),
-    d("report_group", "Laporan", oneOf(REPORT_GROUPS), { required: true }),
+    d("report_group", "Laporan", reportGroup, { required: true }),
     d("area", "Area", text()),
     d("action", "Tindakan", text()),
     d("target", "Target / Indikator", text()),
@@ -196,8 +195,8 @@ const replacements: TableSpec = {
   deleteMode: "clear",
   columns: [
     d("id", "ID Sistem", int(1), { hidden: true }),
-    d("report_group", "Laporan", oneOf(REPORT_GROUPS)),
-    d("station", "Stasiun", oneOf(STATIONS)),
+    d("report_group", "Laporan", reportGroup),
+    d("station", "Stasiun", station),
     d("replaced_name", "Nama SDM Diganti", text(), { required: true }),
     d("reason", "Alasan / Dasar", text()),
     d("withdrawn_on", "Tgl Ditarik", date),
@@ -217,7 +216,7 @@ const weeklyReports: TableSpec = {
   table: "weekly_reports",
   tab: "Temuan Mingguan",
   key: ["week", "scope"],
-  columns: [d("week", "Minggu Ke", int(1, 20)), d("scope", "Lingkup", oneOf(REPORT_SCOPES)), d("findings", "Temuan", text())],
+  columns: [d("week", "Minggu Ke", int(1, 20)), d("scope", "Lingkup", { kind: "station", kps: true }), d("findings", "Temuan", text())],
 };
 
 /** Processing order: parents before children. Deletes run in reverse. */

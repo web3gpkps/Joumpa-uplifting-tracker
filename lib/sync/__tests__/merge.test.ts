@@ -3,6 +3,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { countPlan, isPlanEmpty, merge, mergeCell } from "../merge";
+import { STATIONS, reportGroupOf } from "../../rules";
 import { rowOneSpecs, specFor } from "../tables";
 import { World } from "../testing/fakes";
 import { actionRow, manyStaff, replacementRow, settingsRow, smallDb, staffRow, weeklyRow } from "../testing/fixtures";
@@ -961,5 +962,51 @@ describe("idempotency", () => {
     const w = new World({ ...smallDb(), settings: [settingsRow({ weeks: 12 })] });
     w.sync();
     expect(w.sheet.rows(PAR).find((r) => r.Parameter === "weeks")!.Nilai).toBe(12);
+  });
+});
+
+// ------------------------------------------------------------------ stations from the database
+
+describe("stations come from public.stations", () => {
+  const withUpg = () => ({
+    ...smallDb(),
+    stations: [...STATIONS.map((code) => ({ code, report_group: reportGroupOf(code)! })), { code: "UPG", report_group: "UPG" }],
+  });
+
+  test("a listed station is accepted in any case; an unknown code is noted and not written", () => {
+    const w = seeded(withUpg());
+    const n = w.sheet.rows(SDM).length + 2;
+    w.sheet.setCell(SDM, n, "ID SDM", "UPG-01");
+    w.sheet.setCell(SDM, n, "Stasiun", "upg");
+    w.sheet.setCell(SDM, n, "Nama Petugas", "Petugas UPG");
+    w.sheet.setCell(SDM, n + 1, "ID SDM", "JKT-01");
+    w.sheet.setCell(SDM, n + 1, "Stasiun", "JKT");
+    w.sheet.setCell(SDM, n + 1, "Nama Petugas", "Petugas JKT");
+    w.sync();
+    expect(staff(w, "UPG-01")).toMatchObject({ station: "UPG" });
+    expect(staff(w, "JKT-01")).toBeUndefined();
+    expect(w.sheet.note(SDM, n + 1, "Stasiun")).toContain("tidak ada di daftar stasiun");
+  });
+
+  test("Laporan must be the report group of some station", () => {
+    const w = seeded(withUpg());
+    const n = w.sheet.rows(TL).length + 2;
+    w.sheet.setCell(TL, n, "ID", "UPG-TL01");
+    w.sheet.setCell(TL, n, "Laporan", "upg");
+    w.sheet.setCell(TL, n + 1, "ID", "XYZ-TL01");
+    w.sheet.setCell(TL, n + 1, "Laporan", "XYZ");
+    w.sync();
+    expect(w.db.find("action_items", { code: "UPG-TL01" })).toMatchObject({ report_group: "UPG" });
+    expect(w.db.find("action_items", { code: "XYZ-TL01" })).toBeUndefined();
+    expect(w.sheet.note(TL, n + 1, "Laporan")).toContain("tidak dikenal");
+  });
+
+  test("the shared CGK & HLP report group is still accepted", () => {
+    const w = seeded(withUpg());
+    const n = w.sheet.rows(TL).length + 2;
+    w.sheet.setCell(TL, n, "ID", "CGKHLP-TL99");
+    w.sheet.setCell(TL, n, "Laporan", "cgk & hlp");
+    w.sync();
+    expect(w.db.find("action_items", { code: "CGKHLP-TL99" })).toMatchObject({ report_group: "CGK & HLP" });
   });
 });

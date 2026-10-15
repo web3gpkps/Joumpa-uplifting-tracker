@@ -7,8 +7,7 @@ import { todayInJakarta } from "@/components/shell/programme-calendar";
 import { ActionTable } from "@/components/tindak-lanjut/ActionTable";
 import { AddActionItemButton } from "@/components/tindak-lanjut/AddActionItemButton";
 import { byUrgency, toActionView } from "@/components/tindak-lanjut/action-view";
-import { reportGroups } from "@/lib/aggregate";
-import { reportGroupOf } from "@/lib/rules";
+import { groupOfStation, reportGroups } from "@/lib/aggregate";
 import { firstParam, hrefs, ruleSettings, settingsComplete, type ScreenProps } from "@/lib/workspace";
 
 const TITLE = "Tindak Lanjut";
@@ -38,7 +37,7 @@ export function TindakLanjutScreen({ access, ws, searchParams }: ScreenProps) {
   // ?laporan= (or ?stasiun=, mapped to its report group) for KPS and the owner; a station
   // link always works on its own group.
   const requested =
-    firstParam(searchParams.laporan) ?? reportGroupOf(firstParam(searchParams.stasiun)?.toUpperCase()) ?? null;
+    firstParam(searchParams.laporan) ?? groupOfStation(ws.stations, firstParam(searchParams.stasiun)) ?? null;
   const groupFilter = ws.isKps && requested && groupKeys.includes(requested) ? requested : null;
   const items = (groupFilter ? all.filter((v) => v.reportGroup === groupFilter) : all).sort(byUrgency);
 
@@ -70,6 +69,7 @@ export function TindakLanjutScreen({ access, ws, searchParams }: ScreenProps) {
               accessKey={access.key}
               existing={all.map((v) => ({ code: v.code, reportGroup: v.reportGroup }))}
               defaultGroup={groupFilter}
+              groups={groupKeys}
             />
           ) : undefined
         }

@@ -21,7 +21,11 @@ export type ColumnType =
   | { kind: "int"; min?: number; max?: number }
   | { kind: "numeric"; scale: number; min?: number; max?: number }
   | { kind: "date" }
-  | { kind: "enum"; values: readonly string[] };
+  | { kind: "enum"; values: readonly string[] }
+  /** Station code (`^[A-Z0-9]{2,5}$`, typed in any case); must exist in `stations`. `kps` also allows "KPS". */
+  | { kind: "station"; kps?: boolean }
+  /** Report group ("SUB", "CGK & HLP", ...); must be the report_group of some station in `stations`. */
+  | { kind: "report-group" };
 
 /** A column whose value is stored in the database and synced both ways. */
 export interface DataColumn {
@@ -105,7 +109,13 @@ export interface SheetSnapshot {
 }
 
 /** Raw rows per table as returned by the database. `settings` is the single settings row. */
-export type DbSnapshot = Partial<Record<SyncTable, Record<string, unknown>[]>>;
+/**
+ * Raw rows per table as returned by the database. `stations` (not synced) lists the valid station codes
+ * and report groups that station / report-group columns are checked against.
+ */
+export type DbSnapshot = Partial<Record<SyncTable, Record<string, unknown>[]>> & {
+  stations?: { code: string; report_group: string }[];
+};
 
 export interface Baseline {
   v: 1;

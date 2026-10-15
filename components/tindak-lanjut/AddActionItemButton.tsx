@@ -4,7 +4,6 @@ import { useState, useTransition, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog, DialogActions } from "@/components/ui/Dialog";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
-import { REPORT_GROUPS } from "@/lib/rules";
 import { createActionItem } from "./actions";
 import { ACTION_KINDS, DUE_RULES, DUE_RULE_OPTION } from "./action-view";
 import { nextActionCode, type ExistingItem, type NewItemField, type NewItemInput } from "./owner-items";
@@ -15,6 +14,8 @@ type AddActionItemButtonProps = {
   existing: Pick<ExistingItem, "code" | "reportGroup">[];
   /** Pre-selected report group (the current filter), if any. */
   defaultGroup: string | null;
+  /** Report groups of public.stations, in station order. */
+  groups: readonly string[];
 };
 
 const EMPTY: Omit<NewItemInput, "reportGroup" | "code"> = {
@@ -29,7 +30,7 @@ const EMPTY: Omit<NewItemInput, "reportGroup" | "code"> = {
 };
 
 /** Owner only: "Tambah butir" opens a form; the ID is proposed as the next free <GROUP>-TLnn. */
-export function AddActionItemButton({ accessKey, existing, defaultGroup }: AddActionItemButtonProps) {
+export function AddActionItemButton({ accessKey, existing, defaultGroup, groups }: AddActionItemButtonProps) {
   const [open, setOpen] = useState(false);
   const [round, setRound] = useState(0);
   const [notice, setNotice] = useState("");
@@ -55,6 +56,7 @@ export function AddActionItemButton({ accessKey, existing, defaultGroup }: AddAc
             accessKey={accessKey}
             existing={existing}
             defaultGroup={defaultGroup}
+            groups={groups}
             onCancel={() => setOpen(false)}
             onAdded={(code) => {
               setOpen(false);
@@ -71,6 +73,7 @@ function AddForm({
   accessKey,
   existing,
   defaultGroup,
+  groups,
   onCancel,
   onAdded,
 }: Omit<AddActionItemButtonProps, never> & { onCancel: () => void; onAdded: (code: string) => void }) {
@@ -120,7 +123,7 @@ function AddForm({
         <Field label="Laporan" error={errors.reportGroup} required>
           <Select value={group} onChange={(e) => chooseGroup(e.target.value)}>
             <option value="">Pilih laporan</option>
-            {REPORT_GROUPS.map((g) => (
+            {groups.map((g) => (
               <option key={g} value={g}>
                 {g}
               </option>

@@ -4,7 +4,7 @@ import { requestOrigin } from "@/lib/request-origin";
 import { refresh } from "next/cache";
 import { requireAdmin } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
-import { isLinkScope, type LinkActionResult } from "./link-types";
+import { KPS_SCOPE, type LinkActionResult } from "./link-types";
 import { linkAccess } from "@/lib/workspace/access";
 
 const MAX_LABEL = 80;
@@ -21,12 +21,20 @@ async function insertLink(scope: string, label: string | null) {
   return supabase.from("share_links").insert({ scope, label }).select("token").single();
 }
 
+/** A code listed in public.stations (the database also refuses any other scope). */
+async function isStation(code: string): Promise<boolean> {
+  if (!/^[A-Z0-9]{2,5}$/.test(code)) return false;
+  const supabase = await createClient();
+  const { data } = await supabase.from("stations").select("code").eq("code", code).maybeSingle();
+  return data !== null;
+}
+
 /** "Buat tautan": new link for a scope; returns the full URL to show once. */
 export async function createShareLink(scope: string, rawLabel: string): Promise<LinkActionResult> {
   await requireAdmin();
   const label = cleanLabel(rawLabel);
   const fieldErrors: { scope?: string; label?: string } = {};
-  if (!isLinkScope(scope)) fieldErrors.scope = "Pilih lingkup tautan.";
+  if (scope !== KPS_SCOPE && !(await isStation(scope))) fieldErrors.scope = "Pilih lingkup tautan.";
   if (!label) fieldErrors.label = "Isi label, misalnya nama pemegang tautan.";
   else if (label.length > MAX_LABEL) fieldErrors.label = `Maksimal ${MAX_LABEL} karakter.`;
   if (fieldErrors.scope || fieldErrors.label) {

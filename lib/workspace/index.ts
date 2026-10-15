@@ -52,7 +52,8 @@ export {
   trackerData,
 } from "./view";
 
-export type WorkspaceScope = "SUB" | "DPS" | "CGK" | "HLP" | "KNO" | "KPS";
+/** "KPS" or a station code from public.stations. */
+export type WorkspaceScope = string;
 
 /**
  * share_open(token) payload (docs/SPEC.md "Link RPC surface"): full table rows, already

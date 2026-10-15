@@ -29,6 +29,7 @@ import {
   practiceAvg,
   replacementPass,
   replacementTimeliness,
+  reportGroupOf,
   sameText,
   staffBaseline,
   staffRekap,
@@ -232,6 +233,14 @@ export function stationCodes(stations?: readonly StationRow[]): string[] {
     .map((s, i) => ({ s, i }))
     .sort((a, b) => (a.s.sort ?? a.i) - (b.s.sort ?? b.i) || a.i - b.i)
     .map(({ s }) => s.code);
+}
+
+/** Report group of a station code (case-insensitive), from the station list; the workbook rule without one. */
+export function groupOfStation(stations: readonly StationRow[] | undefined, code: string | null | undefined): string | null {
+  const c = code?.trim().toUpperCase();
+  if (!c) return null;
+  const hit = stations?.find((s) => s.code === c);
+  return hit ? hit.reportGroup : reportGroupOf(c);
 }
 
 export function reportGroups(stations?: readonly StationRow[]): string[] {

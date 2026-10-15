@@ -4,9 +4,9 @@
  * changed via". Pure (no server-only import), so client components may use it too.
  * No formula lives here: those stay in lib/rules and lib/aggregate.
  */
-import type { TrackerData } from "@/lib/aggregate";
+import { groupOfStation, type TrackerData } from "@/lib/aggregate";
 import { formatJam, formatTanggalPendek, toIsoDate } from "@/lib/dates";
-import { DEFAULT_SETTINGS, reportGroupOf, type DueRule, type Settings } from "@/lib/rules";
+import { DEFAULT_SETTINGS, type DueRule, type Settings } from "@/lib/rules";
 import type { Workspace, WorkspaceStaff } from "./index";
 
 const NUMERIC_KEYS = [
@@ -95,7 +95,7 @@ export function trackerData(ws: Workspace, station: string | null = null): Track
   const stations = station ? ws.stations.filter((s) => s.code === station) : ws.stations;
   const staff = station ? ws.staff.filter((s) => s.station === station) : ws.staff;
   const codes = new Set(staff.map((s) => s.code));
-  const group = station ? reportGroupOf(station) : null;
+  const group = station ? groupOfStation(ws.stations, station) : null;
   return {
     settings: ruleSettings(ws.settings),
     stations,

@@ -115,6 +115,15 @@ export function normalize(raw: unknown, type: ColumnType): NormResult {
       const hit = type.values.find((v) => v.toLowerCase() === s.toLowerCase());
       return hit !== undefined ? ok(hit) : bad(`Pilihan tidak valid. Pilihan: ${type.values.join(", ")}.`);
     }
+    case "station": {
+      const s = cleanText(String(raw)).toUpperCase();
+      if (s === "KPS") return type.kps ? ok(s) : bad("KPS bukan kode stasiun. Isi kode stasiun, misalnya CGK.");
+      return /^[A-Z0-9]{2,5}$/.test(s) ? ok(s) : bad("Kode stasiun tidak valid. Isi kode stasiun, misalnya CGK.");
+    }
+    case "report-group": {
+      const s = cleanText(String(raw)).replace(/\s+/g, " ").toUpperCase();
+      return s === "" ? ok(null) : ok(s);
+    }
     case "int": {
       const n = toNumber(raw);
       const range = rangeText(type.min, type.max);

@@ -8,6 +8,7 @@ import {
   TOTAL,
   actionProgress,
   bmiPeriodByStation,
+  groupOfStation,
   reportGroups,
   staffDerived,
   weeklyPerformance,
@@ -15,7 +16,7 @@ import {
   type TrackerData,
 } from "./aggregate";
 import { formatHariTanggal, formatTanggal, type IsoDate } from "./dates";
-import { bmiCheckDate, reportGroupOf, replacementTimeliness, sameText, weekEnd, weekOfDate, type Settings } from "./rules";
+import { bmiCheckDate, replacementTimeliness, sameText, weekEnd, weekOfDate, type Settings } from "./rules";
 import type { SheetKey } from "./workspace/access";
 
 export type DashboardLink = { sheet: SheetKey; query?: Record<string, string | number | null> };
@@ -127,7 +128,7 @@ export function berandaSummary(data: TrackerData, today: IsoDate, stations: read
   const bmiPeriod = currentBmiPeriod(s, today);
 
   const derived = staffDerived(data);
-  const inView = [...new Set(stations.map((code) => reportGroupOf(code) ?? code))];
+  const inView = [...new Set(stations.map((code) => groupOfStation(data.stations, code) ?? code))];
   const groupKeys = reportGroups(data.stations).filter((g) => inView.includes(g));
   const actions = actionProgress(data.actionItems, s, today, groupKeys.length > 0 ? groupKeys : inView);
   const weekly = week === null ? [] : weeklyPerformance(data, week, derived);
@@ -139,7 +140,7 @@ export function berandaSummary(data: TrackerData, today: IsoDate, stations: read
   const row = (key: string): StationRow => {
     const all = key === TOTAL;
     const station = all ? null : key;
-    const group = all ? TOTAL : (reportGroupOf(key) ?? key);
+    const group = all ? TOTAL : (groupOfStation(data.stations, key) ?? key);
     const a = actions.find((r) => r.key === group);
     const repl = all ? timeliness : timeliness.filter(({ r }) => replacementIn(r, key));
     const open = repl.filter(({ t }) => t === "OVERDUE" || t === "Menunggu");

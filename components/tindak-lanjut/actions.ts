@@ -189,6 +189,10 @@ function itemsPort(client: OwnerClient): ActionItemsPort {
         error,
       };
     },
+    async groups() {
+      const { data, error } = await client.from("stations").select("report_group, sort").order("sort");
+      return { data: [...new Set((data ?? []).map((r) => r.report_group))], error };
+    },
     async insert(row) {
       const { error } = await client.from("action_items").insert(row);
       return { error };

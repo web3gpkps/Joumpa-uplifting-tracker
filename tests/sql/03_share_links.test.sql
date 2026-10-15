@@ -151,7 +151,7 @@ select is((select count(*) from _p, jsonb_array_elements(v -> 'weekly_reports') 
 -- ------------------------------------------------------------- KPS: everything
 select is((select count(distinct e ->> 'station') from _p, jsonb_array_elements(v -> 'staff') e where pk = 'kps'),
           5::bigint, 'KPS sees staff of all 5 stations');
-select is((select jsonb_array_length(v -> 'stations') from _p where pk = 'kps'), 5, 'KPS gets all 5 stations');
+select is((select jsonb_array_length(v -> 'stations') from _p where pk = 'kps'), (select count(*)::int from public.stations), 'KPS gets every station');
 select is((select jsonb_array_length(v -> 'staff') from _p where pk = 'kps'), (select count(*)::int from public.staff), 'KPS: all staff');
 select is((select jsonb_array_length(v -> 'weekly_scores') from _p where pk = 'kps'), (select count(*)::int from public.weekly_scores), 'KPS: all weekly scores');
 select is((select jsonb_array_length(v -> 'bmi_checks') from _p where pk = 'kps'), (select count(*)::int from public.bmi_checks), 'KPS: all BMI checks');

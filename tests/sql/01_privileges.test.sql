@@ -110,8 +110,8 @@ select results_eq(
        join pg_catalog.pg_namespace n on n.oid = p.pronamespace
       where n.nspname in ('public', 'private') and p.prosecdef
       order by 1 $$,
-  $$ values ('private.handle_new_user'), ('private.rebuild_sheet_cek_bmi'), ('private.settings_guard_bmi_periods'), ('private.settings_rebuild_sheet_views'), ('private.sync_ping'), ('private.sync_profile_email'), ('public.admin_delete_account'), ('public.is_admin'), ('public.registration_branches'), ('public.share_delete_replacement'), ('public.share_kps_save_staff_baseline'), ('public.share_kps_update_action_item'), ('public.share_open'), ('public.share_save_check'), ('public.share_save_profile'), ('public.share_save_replacement'), ('public.share_save_staff'), ('public.share_save_weekly_report'), ('public.share_save_weekly_score'), ('public.share_update_action_item') $$,
-  'SECURITY DEFINER is limited to is_admin, admin_delete_account, registration_branches, the share_* RPCs, the sign-up trigger, the BMI check guard and the sync ping'
+  $$ values ('private.check_link_scope'), ('private.check_report_group'), ('private.handle_new_user'), ('private.rebuild_sheet_cek_bmi'), ('private.settings_guard_bmi_periods'), ('private.settings_rebuild_sheet_views'), ('private.sync_ping'), ('private.sync_profile_email'), ('public.admin_delete_account'), ('public.is_admin'), ('public.registration_branches'), ('public.share_delete_replacement'), ('public.share_kps_save_staff_baseline'), ('public.share_kps_update_action_item'), ('public.share_open'), ('public.share_save_check'), ('public.share_save_profile'), ('public.share_save_replacement'), ('public.share_save_staff'), ('public.share_save_weekly_report'), ('public.share_save_weekly_score'), ('public.share_update_action_item') $$,
+  'SECURITY DEFINER is limited to is_admin, admin_delete_account, registration_branches, the share_* RPCs, the sign-up trigger, the BMI check guard, the station/report-group checks and the sync ping'
 );
 
 -- Future objects created by postgres in public do not grant anon (alter default privileges).

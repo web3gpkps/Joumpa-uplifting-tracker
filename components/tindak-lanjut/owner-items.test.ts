@@ -38,6 +38,7 @@ function mockPort(overrides: Partial<ActionItemsPort> = {}) {
       calls.listed += 1;
       return { data: EXISTING, error: null };
     },
+    groups: async () => ({ data: ["SUB", "DPS", "CGK & HLP", "KNO"], error: null }),
     insert: async (row) => {
       calls.inserted.push(row);
       return { error: null };

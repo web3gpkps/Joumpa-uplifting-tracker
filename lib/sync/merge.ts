@@ -149,6 +149,9 @@ interface Global {
   finalKeys: Map<SyncTable, Set<string>>;
   /** Keys this plan deletes from the DB, per table (children cascade). */
   dbDeleted: Map<SyncTable, Set<string>>;
+  /** Valid station codes and report groups (DB `stations`), when known. */
+  stations: Set<string> | null;
+  reportGroups: Set<string> | null;
   nextRef: number;
 }
 
@@ -261,7 +264,9 @@ function compareTuple(a: (string | number)[], b: (string | number)[]): number {
   return 0;
 }
 
-const SCOPE_ORDER = ["SUB", "DPS", "CGK", "HLP", "KNO", "KPS"];
+/** Temuan Mingguan rows per week: the workbook's five stations, other stations by code, KPS last. */
+const SCOPE_ORDER = ["SUB", "DPS", "CGK", "HLP", "KNO"];
+const scopeRank = (scope: string) => (scope === "KPS" ? 99 : SCOPE_ORDER.includes(scope) ? SCOPE_ORDER.indexOf(scope) : 50);
 
 function appendOrder(spec: TableSpec, v: CanonRow): (string | number)[] {
   const n = (x: Canon, dflt = 1e9) => (typeof x === "number" ? x : dflt);
@@ -274,7 +279,7 @@ function appendOrder(spec: TableSpec, v: CanonRow): (string | number)[] {
     case "bmi_checks":
       return [s(v.staff_code), n(v.period)];
     case "weekly_reports":
-      return [n(v.week), SCOPE_ORDER.indexOf(s(v.scope))];
+      return [n(v.week), scopeRank(s(v.scope)), s(v.scope)];
     case "replacements":
       return [n(v.id)];
     default:
@@ -402,6 +407,20 @@ function mergeTable(spec: TableSpec, g: Global): TableResult {
     return `ID SDM "${value}" tidak ada di Master SDM.`;
   };
 
+  /** Normalize a sheet value; station codes and report groups must also exist in the DB's stations. */
+  const normSheet = (raw: unknown, type: ColumnType) => {
+    const n = normalize(raw, type);
+    if (!n.ok || n.value === null) return n;
+    if (type.kind === "station" && g.stations) {
+      if ((type.kps && n.value === "KPS") || g.stations.has(String(n.value))) return n;
+      return { ok: false as const, message: `Stasiun "${n.value}" tidak ada di daftar stasiun.` };
+    }
+    if (type.kind === "report-group" && g.reportGroups && !g.reportGroups.has(String(n.value))) {
+      return { ok: false as const, message: `Laporan "${n.value}" tidak dikenal. Isi kode stasiun, atau "CGK & HLP".` };
+    }
+    return n;
+  };
+
   // ---- cell write helper: formula cells are never written
   const writeCell = (row: number, colId: string, value: Canon, rk: string | null) => {
     const col = colIndex[colId];
@@ -426,7 +445,7 @@ function mergeTable(spec: TableSpec, g: Global): TableResult {
       for (const k of spec.key) {
         const kc = dataColumns(spec).find((c) => c.db === k)!;
         // Keys may come from formulas (e.g. Cek BMI's ID SDM): their computed value counts.
-        const n = normalize(cell(kc), kc.type);
+        const n = normSheet(cell(kc), kc.type);
         if (!n.ok) {
           addIssue("invalid_value", null, rowNo, kc.db, n.message, { sheetValue: cell(kc) });
           keyBad = true;
@@ -456,7 +475,7 @@ function mergeTable(spec: TableSpec, g: Global): TableResult {
           values[c.db] = null;
           continue;
         }
-        const n = normalize(cell(c), typeFor(spec, c, rk));
+        const n = normSheet(cell(c), typeFor(spec, c, rk));
         if (n.ok) values[c.db] = n.value;
         else {
           values[c.db] = null;
@@ -909,6 +928,8 @@ export function merge(input: MergeInput): Plan {
     prevIssues: input.baseline?.issues ?? {},
     finalKeys: new Map(),
     dbDeleted: new Map(),
+    stations: input.db.stations ? new Set(input.db.stations.map((r) => String(r.code))) : null,
+    reportGroups: input.db.stations ? new Set(input.db.stations.map((r) => String(r.report_group).toUpperCase())) : null,
     nextRef: 1,
   };
   const specs = input.specs ?? SYNC_TABLES;

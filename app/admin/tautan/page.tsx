@@ -6,7 +6,7 @@ import { Panel } from "@/components/ui/Panel";
 import { ErrorState } from "@/components/ui/States";
 import { ReloadButton } from "@/components/ui/ReloadButton";
 import { LinksManager } from "@/components/admin/LinksManager";
-import { LINK_SCOPES, type LinkRow } from "@/components/admin/link-types";
+import { KPS_SCOPE, type LinkRow, type ScopeStation } from "@/components/admin/link-types";
 import { requireAdmin } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
 import { linkAccess } from "@/lib/workspace/access";
@@ -34,12 +34,15 @@ async function origin(): Promise<string> {
 async function LinksData() {
   await requireAdmin();
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("share_links")
-    .select("id, scope, label, created_at, revoked_at, last_used_at, token")
-    .order("created_at", { ascending: false });
+  const [{ data, error }, stationResult] = await Promise.all([
+    supabase
+      .from("share_links")
+      .select("id, scope, label, created_at, revoked_at, last_used_at, token")
+      .order("created_at", { ascending: false }),
+    supabase.from("stations").select("code, report_group").order("sort").order("code"),
+  ]);
 
-  if (error) {
+  if (error || stationResult.error) {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader title={TITLE} />
@@ -55,10 +58,12 @@ async function LinksData() {
   }
 
   const base = await origin();
-  // KPS first, then stations; an unknown scope sorts last.
+  const stations: ScopeStation[] = (stationResult.data ?? []).map((s) => ({ code: s.code, reportGroup: s.report_group }));
+  // KPS first, then stations in their order; an unknown scope sorts last.
+  const order = [KPS_SCOPE, ...stations.map((s) => s.code)];
   const rank = (scope: string) => {
-    const i = (LINK_SCOPES as readonly string[]).indexOf(scope);
-    return i < 0 ? LINK_SCOPES.length : i;
+    const i = order.indexOf(scope);
+    return i < 0 ? order.length : i;
   };
   const links: LinkRow[] = (data ?? [])
     .map((row) => ({
@@ -79,5 +84,5 @@ async function LinksData() {
         b.createdAt.localeCompare(a.createdAt),
     );
 
-  return <LinksManager title={TITLE} links={links} />;
+  return <LinksManager title={TITLE} links={links} stations={stations} />;
 }

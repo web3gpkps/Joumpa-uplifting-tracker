@@ -52,11 +52,17 @@ workbook, adapters with mocked HTTP, orchestrator failure paths).
 | action_items | `Tindak Lanjut`, header 4, data 5..56 | B `ID` | C–H, I Batas Waktu (literal only), J PIC, K Status, L % Progres, M Tgl Update, N Bukti, O Catatan KPS | **% Progres is a fraction in the sheet (0.5 = 50%) and 0..100 in the DB.** I is a `TODAY()` formula for the 12 rolling items: skipped for those rows. `due_rule`, `sort_order` are DB-only. New items go below the list (No + P/Q formulas copied) |
 | replacements | `Penggantian SDM`, header 4, rows 5..44 | P `ID Sistem` (hidden) | B–K, N, O, Q `ID SDM` (staff_code) | P/Q are added by the engine on the first run. New records fill the first free numbered row; beyond row 44 the row is extended with No + L/M formulas. Deleting clears the row (No/formulas stay) |
 | settings | `Parameter`, label B / value C (rows 5..21) | label text in B | C | `C23` (`TODAY()`) is a formula: skipped. `replacement_deadline` is DB-only |
-| weekly_reports | `Temuan Mingguan` (engine-owned, row-1 header) | `Minggu Ke` + `Lingkup` | `Temuan` | the only tab the engine creates; Lingkup = SUB/DPS/CGK/HLP/KNO/KPS |
+| weekly_reports | `Temuan Mingguan` (engine-owned, row-1 header) | `Minggu Ke` + `Lingkup` | `Temuan` | the only tab the engine creates; Lingkup = KPS or a station code |
 
 **Never touched:** `Petunjuk`, `Dashboard`, `Rekap Performa`, `Laporan Mingguan` (translate refuses any
 write there). **Never synced:** `share_links`, `admins`, `stations`, `sync_*`, and attribution/meta columns
 (`updated_at`, `updated_by`, `updated_by_user`, `updated_by_link`, `created_at`, internal ids).
+
+Station columns (`Stasiun` in Master SDM and Penggantian SDM, `Lingkup` in Temuan Mingguan) are checked
+against `public.stations` on every run, and `Laporan` (Tindak Lanjut, Penggantian SDM) against the report
+groups in that table (each station's own code, or `CGK & HLP`). Any case is accepted (`upg` → `UPG`); an
+unknown code is `rejected:invalid_value` with a note on the cell. The sheet's own Dashboard, Rekap and
+Laporan formulas still count only the five workbook stations.
 
 Generic rules for workbook tabs:
 

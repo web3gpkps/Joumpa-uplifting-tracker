@@ -76,13 +76,31 @@ select is(
   'settings defaults match the workbook Parameter sheet'
 );
 select is(
-  (select string_agg(code || '=' || report_group, ',' order by sort) from public.stations),
+  (select string_agg(code || '=' || report_group, ',' order by sort) from (select * from public.stations order by sort limit 5) w),
   'SUB=SUB,DPS=DPS,CGK=CGK & HLP,HLP=CGK & HLP,KNO=KNO',
-  'five stations with their report groups'
+  'the five workbook stations come first, with their report groups'
 );
+select is((select count(*) from public.stations), 35::bigint, '35 stations: the workbook five plus the Garuda tracker''s other 30');
+select is((select count(*) from public.stations where code not in ('CGK', 'HLP') and report_group <> code), 0::bigint,
+          'every station except CGK and HLP is its own report group');
+
+-- stations come from the table: a listed new station works everywhere, an unknown code nowhere
+insert into public.staff (code, station, name) values ('TST-UPG', 'UPG', 'Uji Upg');
+select is((select station from public.staff where code = 'TST-UPG'), 'UPG', 'staff can be placed in a new station (UPG)');
+select lives_ok($$insert into public.share_links (scope) values ('UPG')$$, 'a link can open a new station (UPG)');
+select lives_ok($$insert into public.action_items (code, report_group) values ('TST-UPG-TL01', 'UPG')$$, 'action item in the UPG report group');
+select lives_ok($$insert into public.replacements (station, replaced_name) values ('UPG', 'Uji')$$, 'replacement in UPG');
+select throws_ok($$insert into public.action_items (code, report_group) values ('TST-X-TL01', 'XYZ')$$, '23514', null, 'action item report group must be a group in stations');
+select throws_ok($$insert into public.replacements (report_group, replaced_name) values ('XYZ', 'x')$$, '23514', null, 'replacement report group must be a group in stations');
+select throws_ok($$insert into public.stations (code, report_group, sort) values ('KPS', 'KPS', 99)$$, '23514', null, 'KPS is not a station code');
+select throws_ok($$insert into public.stations (code, report_group, sort) values ('jkt-1', 'JKT', 99)$$, '23514', null, 'station codes are 2 to 5 capitals or digits');
+insert into public.stations (code, report_group, sort) values ('JKT', 'JKT', 99);
+select lives_ok($$insert into public.share_links (scope) values ('JKT')$$, 'a station added later can get a link at once');
+update public.stations set code = 'UPX' where code = 'UPG';
+select is((select station from public.staff where code = 'TST-UPG'), 'UPX', 'renaming a station code carries its staff along');
 
 -- share_links
-select throws_ok($$insert into public.share_links (scope) values ('JKT')$$, '23514', null, 'share scope is a station or KPS');
+select throws_ok($$insert into public.share_links (scope) values ('ZZZ')$$, '23514', null, 'share scope is a listed station or KPS');
 select throws_ok($$insert into public.share_links (token, scope) values ('short', 'SUB')$$, '23514', null, 'share token must be 48 hex chars');
 
 select * from finish();

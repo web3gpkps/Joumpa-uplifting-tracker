@@ -43,6 +43,8 @@ export type ExistingItem = { code: string; reportGroup: string; sortOrder: numbe
 /** What the owner actions need from action_items (the cookie client under admin RLS). */
 export type ActionItemsPort = {
   list: () => Promise<{ data: ExistingItem[]; error: { message: string } | null }>;
+  /** Report groups of public.stations (a new item must use one of them). */
+  groups: () => Promise<{ data: string[]; error: { message: string } | null }>;
   insert: (row: NewItemRow) => Promise<{ error: { code?: string; message: string } | null }>;
   remove: (code: string) => Promise<{ deleted: number; error: { message: string } | null }>;
 };
@@ -96,10 +98,11 @@ export function nextActionCode(group: string, items: readonly Pick<ExistingItem,
 export function validateNewItem(
   input: NewItemInput,
   existing: readonly ExistingItem[],
+  groups: readonly string[] = REPORT_GROUPS,
 ): { fieldErrors: Partial<Record<NewItemField, string>>; row: NewItemRow | null } {
   const fieldErrors: Partial<Record<NewItemField, string>> = {};
   const group = clean(input.reportGroup);
-  if (!group || !(REPORT_GROUPS as readonly string[]).includes(group)) fieldErrors.reportGroup = "Pilih laporan.";
+  if (!group || !groups.includes(group)) fieldErrors.reportGroup = "Pilih laporan.";
 
   const code = clean(input.code)?.replace(/\s+/g, "") ?? null;
   if (!code) fieldErrors.code = "Isi ID butir, misalnya SUB-TL14.";
@@ -152,10 +155,10 @@ export function validateNewItem(
 /** "Tambah butir". `isOwner` must come from the resolved access, never from the client. */
 export async function addActionItem(isOwner: boolean, port: ActionItemsPort | null, input: NewItemInput): Promise<OwnerResult> {
   if (!isOwner || !port) return { ok: false, message: OWNER_ONLY_MESSAGE };
-  const existing = await port.list();
-  if (existing.error) return { ok: false, message: "Tidak bisa disimpan. Coba lagi." };
+  const [existing, groups] = await Promise.all([port.list(), port.groups()]);
+  if (existing.error || groups.error) return { ok: false, message: "Tidak bisa disimpan. Coba lagi." };
 
-  const { fieldErrors, row } = validateNewItem(input, existing.data);
+  const { fieldErrors, row } = validateNewItem(input, existing.data, groups.data);
   if (!row) return { ok: false, message: "Periksa isian yang ditandai.", fieldErrors };
 
   const { error } = await port.insert(row);

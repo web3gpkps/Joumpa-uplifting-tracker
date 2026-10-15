@@ -11,11 +11,13 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { CopyFeedback, CopyLinkField, copyText } from "./CopyLinkField";
 import { formatWaktu } from "./format";
 import { createShareLink, revokeShareLink, rotateShareLink } from "./link-actions";
-import { KPS_SCOPE, LINK_SCOPES, scopeDescription, scopeName, type LinkRow, type NewLink } from "./link-types";
+import { KPS_SCOPE, linkScopes, scopeDescription, scopeName, type LinkRow, type NewLink, type ScopeStation } from "./link-types";
 
 type LinksManagerProps = {
   title: string;
   links: LinkRow[];
+  /** public.stations in display order. */
+  stations: ScopeStation[];
 };
 
 type Confirm = { mode: "revoke" | "rotate"; link: LinkRow } | null;
@@ -33,8 +35,8 @@ function linkName(l: LinkRow): string {
  * "Buat tautan" in a dialog, the new URL shown once in its own dialog, revoked links
  * behind a toggle.
  */
-export function LinksManager({ title, links }: LinksManagerProps) {
-  const scopes: readonly string[] = LINK_SCOPES;
+export function LinksManager({ title, links, stations }: LinksManagerProps) {
+  const scopes: readonly string[] = linkScopes(stations);
   const active = links.filter((l) => !l.revokedAt);
   const revoked = links.filter((l) => l.revokedAt);
   const stationScopes = scopes.filter((s) => s !== KPS_SCOPE);
@@ -207,6 +209,7 @@ export function LinksManager({ title, links }: LinksManagerProps) {
           <CreateForm
             key={createRound}
             scopes={scopes}
+            stations={stations}
             onCancel={() => setCreateOpen(false)}
             onCreated={(link) => {
               setCreateOpen(false);
@@ -282,10 +285,12 @@ export function LinksManager({ title, links }: LinksManagerProps) {
 
 function CreateForm({
   scopes,
+  stations,
   onCancel,
   onCreated,
 }: {
   scopes: readonly string[];
+  stations: readonly ScopeStation[];
   onCancel: () => void;
   onCreated: (link: NewLink) => void;
 }) {
@@ -319,7 +324,7 @@ function CreateForm({
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-      <Field label="Lingkup" help={scope ? scopeDescription(scope) : undefined} error={errors.scope} required>
+      <Field label="Lingkup" help={scope ? scopeDescription(scope, stations) : undefined} error={errors.scope} required>
         <Select value={scope} onChange={(e) => setScope(e.target.value)}>
           <option value="">Pilih lingkup</option>
           {scopes.map((s) => (

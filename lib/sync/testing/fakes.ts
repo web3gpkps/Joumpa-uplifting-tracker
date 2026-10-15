@@ -5,6 +5,7 @@
  */
 import { finalizeBaseline, merge, type MergeInput } from "../merge";
 import { isoToSerial } from "../normalize";
+import { STATIONS, reportGroupOf } from "../../rules";
 import { SYNC_TABLES, rowOneSpecs, specFor } from "../tables";
 import type { Baseline, Canon, CellFormat, DbSnapshot, Plan, SheetSnapshot, SyncTable, TableSpec } from "../types";
 
@@ -135,14 +136,18 @@ function trimValues(values: unknown[][]): unknown[][] {
 
 export class FakeDb {
   tables = new Map<SyncTable, Record<string, unknown>[]>();
+  /** public.stations (read, never synced): the workbook's five unless the test passes its own list. */
+  stations: { code: string; report_group: string }[];
   private nextIds = new Map<SyncTable, number>();
 
   constructor(init: DbSnapshot = {}) {
-    for (const [t, rows] of Object.entries(init)) this.tables.set(t as SyncTable, (rows ?? []).map((r) => ({ ...r })));
+    const { stations, ...tables } = init;
+    this.stations = stations ?? STATIONS.map((code) => ({ code, report_group: reportGroupOf(code)! }));
+    for (const [t, rows] of Object.entries(tables)) this.tables.set(t as SyncTable, (rows ?? []).map((r) => ({ ...r })));
   }
 
   snapshot(): DbSnapshot {
-    const out: DbSnapshot = {};
+    const out: DbSnapshot = { stations: this.stations.map((s) => ({ ...s })) };
     for (const [t, rows] of this.tables) out[t] = rows.map((r) => ({ ...r }));
     return out;
   }
