@@ -79,7 +79,7 @@ describe("Cek BMI interval and number of checks", () => {
   });
 
   // Five is also the number of columns of a check and of identity columns, so only words are checked here;
-  // the tests of tracker-model, csv and labels run 1, 8, 26 and 52 checks.
+  // the tests of tracker-model, xlsx-export and labels run 1, 8, 26 and 52 checks.
   test("the number of checks is never written as a word", () => {
     const found: string[] = [];
     for (const path of sourceFiles()) {
