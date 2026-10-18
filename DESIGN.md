@@ -138,10 +138,12 @@ JOUMPA tab "Cek BMI 2 Mingguan":
 Sidebar (≥1024px) and the phone menu sheet share one layout, in three bands split by 1px white/15 hairlines:
 - **Identity:** logo on a white chip, then the scope card (white/6 fill, white/12 inset ring): pin icon +
   scope line, calendar icon + programme week.
-- **Nav:** each group is an uppercase 13/600 caption (#a3c4b5) over its items; groups are separated by a
+- **Nav:** each group (menu) is an uppercase 13/600 caption (#a3c4b5) over its items; groups are separated by a
   hairline. Every item is icon + label: 20px icons from `components/shell/NavIcon.tsx` (one family, 24 grid,
   1.75 stroke, Lucide-style), inactive text #d3e6dd (11.1:1) with icons #8db3a3 (6.3:1), hover white/8 and
   white. Rows 36px from 1024px, 44px below.
+- **Sub-items:** indented 12px under their group caption on a 1px white/20 vertical guide line that runs
+  from the caption to the last item. Long labels wrap to a second line instead of being cut off.
 - **Current page:** a light pill, `--brand-tint` fill with navy 600 text (12.5:1) and a `--brand` icon. The
   pill itself is 12.5:1 against the sidebar, so the state never rests on colour alone. No side stripe.
 - **Footer:** the account (user icon) or link label (link icon) and a "Keluar" row, on the same icon column.

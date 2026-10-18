@@ -19,7 +19,8 @@ function navLinkClasses(active: boolean): string {
 
 /**
  * The grouped nav list, shared by the sidebar (≥1024px) and the phone menu sheet. A group is an
- * uppercase caption over its items; groups are split by a hairline. Every item carries its icon,
+ * uppercase caption over its items; the items are indented under it on a vertical guide line
+ * that runs from the caption to the last item, and groups are split by a hairline. Every item carries its icon,
  * and the current page is a light pill (navy on brand-tint, 12.5:1; the pill on the sidebar green 12.5:1).
  */
 function NavList({ sections, onNavigate }: { sections: NavSection[]; onNavigate?: () => void }) {
@@ -34,7 +35,7 @@ function NavList({ sections, onNavigate }: { sections: NavSection[]; onNavigate?
             <p id={headingId} className="nav-label mb-1 px-3 py-1">
               {section.label}
             </p>
-            <ul aria-labelledby={headingId} className="flex flex-col gap-0.5">
+            <ul aria-labelledby={headingId} className="ml-3 flex flex-col gap-0.5 border-l border-white/20 pl-2">
               {section.items.map((item) => {
                 const active = isNavActive(pathname, item);
                 return (
@@ -52,7 +53,7 @@ function NavList({ sections, onNavigate }: { sections: NavSection[]; onNavigate?
                           active ? "text-brand" : "text-[#8db3a3] group-hover:text-white",
                         )}
                       />
-                      <span className="min-w-0 truncate">{item.label}</span>
+                      <span className="min-w-0 py-2">{item.label}</span>
                     </Link>
                   </li>
                 );
