@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import type { Workspace } from "@/lib/workspace";
 import { ACCOUNT_ACCESS, navSections } from "@/lib/workspace/access";
-import { ShellFrame, ShellLoading } from "./ShellFrame";
-import { SignOutButton } from "./SignOutButton";
+import { ShellFrame, ShellIdentity, ShellLoading, WeekLine } from "./ShellFrame";
+import { ShellSignOut } from "./SignOutButton";
 import { branchBmiNavigation, isBranchBmiView } from "./cgk-bmi";
 import { programmeWeekLine } from "./programme-calendar";
 
@@ -30,15 +30,8 @@ export function AccountShell({ workspace, accountName, today, children }: Accoun
       homeHref={bmiOnly ? `${ACCOUNT_ACCESS.basePath}/bmi` : ACCOUNT_ACCESS.basePath}
       scopeLabel={workspace.scopeLabel}
       scopeShort={workspace.scope}
-      weekLine={workspace.schedule ? programmeWeekLine(workspace.schedule, today) : undefined}
-      footer={
-        <div className="flex items-center justify-between gap-2">
-          <span className="min-w-0 truncate text-xs text-[#b4d2c4]" title={accountName}>
-            {accountName}
-          </span>
-          <SignOutButton variant="ghost" size="sm" />
-        </div>
-      }
+      weekLine={workspace.schedule ? <WeekLine>{programmeWeekLine(workspace.schedule, today)}</WeekLine> : undefined}
+      footer={<ShellIdentity icon="user" text={accountName} action={<ShellSignOut />} />}
     >
       {children}
     </ShellFrame>

@@ -108,8 +108,8 @@ dialogs and the phone sheet; transitions ≤ 120ms, none with reduced motion.
 
 Applied from the tokens in `app/globals.css`; the logo and CRUD behaviour are unchanged.
 - Sidebar and phone menu sheet are deep Gapura green (`--navy` #0f2f26, white on it 14.4:1) with the logo
-  on a white chip (never recoloured). Active item: white/10 fill, white 600 text, 3px bright emerald stripe.
-  Group headings #a3c4b5 (7.6:1), secondary text #b4d2c4 (8.9:1).
+  on a white chip (never recoloured). Group headings #a3c4b5 (7.6:1), secondary text #b4d2c4 (8.9:1).
+  See "Sidebar revision (18 Okt 2026)" for the current nav rows.
 - Primary colour stays deep emerald (`--brand` #0f6b4a); page `--bg` #f4f8f6.
 - Every page opens with the `.hero` banner (PageHeader): deep green to emerald, optional eyebrow, title,
   one meta line, actions restyled for the dark banner (`.hero-actions`). Plain in print.
@@ -132,3 +132,19 @@ JOUMPA tab "Cek BMI 2 Mingguan":
   check that has data. Every check, the first included, can be edited.
 - Access: a station link (not KPS) and a single-station branch account have the Cek BMI menu only; their
   home and every other address redirect to Cek BMI. KPS links, KPS accounts and the owner keep every page.
+
+## Sidebar revision (18 Okt 2026)
+
+Sidebar (≥1024px) and the phone menu sheet share one layout, in three bands split by 1px white/15 hairlines:
+- **Identity:** logo on a white chip, then the scope card (white/6 fill, white/12 inset ring): pin icon +
+  scope line, calendar icon + programme week.
+- **Nav:** each group is an uppercase 13/600 caption (#a3c4b5) over its items; groups are separated by a
+  hairline. Every item is icon + label: 20px icons from `components/shell/NavIcon.tsx` (one family, 24 grid,
+  1.75 stroke, Lucide-style), inactive text #d3e6dd (11.1:1) with icons #8db3a3 (6.3:1), hover white/8 and
+  white. Rows 36px from 1024px, 44px below.
+- **Current page:** a light pill, `--brand-tint` fill with navy 600 text (12.5:1) and a `--brand` icon. The
+  pill itself is 12.5:1 against the sidebar, so the state never rests on colour alone. No side stripe.
+- **Footer:** the account (user icon) or link label (link icon) and a "Keluar" row, on the same icon column.
+- Every icon, logo and label in the sidebar sits on one 24px column. Focus ring #a9e9b9 (10.3:1).
+- Phone bottom bar: icon over label; the current page gets a `--brand-tint` pill behind its icon and brand
+  600 text. The cells share the width, so a BMI-only account gets two wide cells.
